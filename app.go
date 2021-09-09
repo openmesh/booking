@@ -1,3 +1,6 @@
+package booking
+
+import "context"
 
 // Build version and comming SHA.
 var (

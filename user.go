@@ -18,6 +18,8 @@ type User struct {
 	// Randomly generated API key to be used by secure application to identify themselves.
 	PrivateAPIKey string `json:"-"`
 
+	APIKey string `json:"-"`
+
 	// Timestamps for user creation & last update.
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

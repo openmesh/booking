@@ -40,7 +40,7 @@ type BookingService interface {
 	// permission to view it.
 	FindBookingByID(ctx context.Context, id int) (*Booking, error)
 
-	// Retreives a lit of bookings based on a filter. Only returns bookings that
+	// Retreives a list of bookings based on a filter. Only returns bookings that
 	// are accessible to the user. Also returns a count of total matching bookings
 	// which may be different from the number of returned bookings if the "Limit"
 	// field is set.
@@ -70,7 +70,7 @@ type BookingFilter struct {
 	ResourceID     *int      `json:"resourceId"`
 	Status         *string   `json:"status"`
 	StartTimeAfter time.Time `json:"startTimeAfter"`
-	EndTimeAfter   time.Time `json:"endTimeAfter"`
+	EndTimeBefore  time.Time `json:"endTimeBefore"`
 
 	// Restrict to subset of range.
 	Offset int `json:"offset"`
@@ -82,6 +82,7 @@ type BookingFilter struct {
 
 // BookingUpdate represents a set of fields to update on a booking.
 type BookingUpdate struct {
-	Metadata map[string]string `json:"metadata"`
-	Status   string            `json:"status"`
+	ResourceID int               `json:"resourceId"`
+	Metadata   map[string]string `json:"metadata"`
+	Status     string            `json:"status"`
 }
