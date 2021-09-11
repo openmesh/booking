@@ -9,10 +9,9 @@ import (
 type Resource struct {
 	ID int `json:"id"`
 
-	// Owner of the resource. Only the owner of the resource may make changes to
-	// it.
-	UserID int   `json:"userId"`
-	User   *User `json:"user"`
+	// Organization that the resource belongs to.
+	OrganizationID int           `json:"organizationId"`
+	Organization   *Organization `json:"organization"`
 
 	// The name given to the resource.
 	Name string `json:"name"`
@@ -61,29 +60,29 @@ type Slot struct {
 
 // ResourceService represents a service for managing resources.
 type ResourceService interface {
-	// Retrieves a single resource by ID along with associated availabilities.
+	// FindResourceByID retrieves a single resource by ID along with associated availabilities.
 	// Returns ENOTFOUND if resource does not exist or user does not have
 	// permission to view it.
 	FindResourceByID(ctx context.Context, id int) (*Resource, error)
 
-	// Retreives a lit of resources based on a filter. Only returns resources that
+	// FindResources retrieves a lit of resources based on a filter. Only returns resources that
 	// accessible to the user. Also returns a count of total matching bookings
 	// which may be different from the number of returned bookings if the "Limit"
 	// field is set.
 	FindResources(ctx context.Context, filter ResourceFilter) ([]*Resource, int, error)
 
-	// Creates a new resource and assigns the current user as the owner.
+	// CreateResource creates a new resource and assigns the current user as the owner.
 	CreateResource(ctx context.Context, resource *Resource) error
 
-	// Updates an existing resource by ID. Only the resource owner can update a
+	// UpdateResource updates an existing resource by ID. Only the resource owner can update a
 	// resource. Returns the new resource state even if there was an error during
 	// update.
 	//
 	// Returns ENOTFOUND if the resource does not exist or the user does not have
 	// permission to update it.
-	UpdateResource(ctx context.Context, id int, upd ResourceUpdate) (*Booking, error)
+	UpdateResource(ctx context.Context, id int, upd ResourceUpdate) (*Resource, error)
 
-	// Permanently removes a resource by ID. Only the resource owner may delete a
+	// DeleteResource permanently removes a resource by ID. Only the resource owner may delete a
 	// resource. Returns ENOTFOUND if the resource does not exist or the user does
 	// not have permission to delete it.
 	DeleteResource(ctx context.Context, id int) error
@@ -114,3 +113,6 @@ type ResourceUpdate struct {
 	BookingPrice int     `json:"bookingPrice"`
 	Slots        []*Slot `json:"slots"`
 }
+
+// ResourceServiceMiddleware defines a middleware for a resource service.
+type ResourceServiceMiddleware func(ResourceService) ResourceService

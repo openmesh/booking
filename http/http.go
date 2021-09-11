@@ -10,17 +10,6 @@ import (
 	"strings"
 
 	"github.com/openmesh/booking"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-)
-
-// Generic HTTP metrics.
-var (
-	errorCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "booking_http_error_count",
-		Help: "Total number of errors by error code",
-	}, []string{"code"})
 )
 
 // Client represents an HTTP client.
@@ -59,8 +48,8 @@ const SessionCookieName = "session"
 
 // Session represents session data stored in a secure cookie.
 type Session struct {
-	UserID      int    `json:"userID"`
-	RedirectURL string `json:"redirectURL"`
+	UserID      int    `json:"userId"`
+	RedirectURL string `json:"redirectUrl"`
 	State       string `json:"state"`
 }
 
@@ -78,9 +67,6 @@ func SetFlash(w http.ResponseWriter, s string) {
 func Error(w http.ResponseWriter, r *http.Request, err error) {
 	// Extract error code & message.
 	code, message := booking.ErrorCode(err), booking.ErrorMessage(err)
-
-	// Track metrics by code.
-	errorCount.WithLabelValues(code).Inc()
 
 	// Log & report internal errors.
 	if code == booking.EINTERNAL {
@@ -150,7 +136,7 @@ var codes = map[string]int{
 	booking.EINTERNAL:       http.StatusInternalServerError,
 }
 
-// ErrorStatusCode returns the associated HTTP status code for a WTF error code.
+// ErrorStatusCode returns the associated HTTP status code for a booking error code.
 func ErrorStatusCode(code string) int {
 	if v, ok := codes[code]; ok {
 		return v
@@ -158,7 +144,7 @@ func ErrorStatusCode(code string) int {
 	return http.StatusInternalServerError
 }
 
-// FromErrorStatusCode returns the associated WTF code for an HTTP status code.
+// FromErrorStatusCode returns the associated booking code for an HTTP status code.
 func FromErrorStatusCode(code int) string {
 	for k, v := range codes {
 		if v == code {
@@ -167,3 +153,39 @@ func FromErrorStatusCode(code int) string {
 	}
 	return booking.EINTERNAL
 }
+
+// errorer is implemented by all concrete response types that may contain
+// errors. It allows us to change the HTTP response code without needing to
+// trigger an endpoint (transport-level) error. For more information, read the
+// big comment in endpoints.go.
+type errorer interface {
+	error() error
+}
+
+// encodeResponse is the common method to encode all response types to the
+// client. I chose to do it this way because, since we're using JSON, there's no
+// reason to provide anything more specific. It's certainly possible to
+// specialize on a per-response (per-method) basis.
+func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+	if e, ok := response.(errorer); ok && e.error() != nil {
+		// Not a Go kit transport error, but a business-logic error.
+		// Provide those as HTTP errors.
+		encodeError(ctx, e.error(), w)
+		return nil
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	return json.NewEncoder(w).Encode(response)
+}
+
+func encodeError(_ context.Context, err error, w http.ResponseWriter) {
+	if err == nil {
+		panic("encodeError with nil error")
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(ErrorStatusCode(err.Error()))
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"error": err.Error(),
+	})
+}
+
+type empty struct{}

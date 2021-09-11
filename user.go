@@ -8,6 +8,10 @@ import (
 type User struct {
 	ID int `json:"id"`
 
+	// Organization that the user belongs to.
+	OrganizationID int           `json:"organizationId"`
+	Organization   *Organization `json:"organization"`
+
 	// User's preferred name and email
 	Name  string `json:"name"`
 	Email string `json:"email"`
@@ -79,3 +83,6 @@ type UserUpdate struct {
 	Name  *string `json:"name"`
 	Email *string `json:"email"`
 }
+
+// UserServiceMiddleware defines a middleware for a user service.
+type UserServiceMiddleware func(UserService) UserService

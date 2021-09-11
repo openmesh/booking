@@ -10,34 +10,14 @@ import (
 
 	"github.com/google/go-github/v32/github"
 	"github.com/gorilla/mux"
+	"github.com/openmesh/booking"
 	"golang.org/x/oauth2"
 )
 
 // registerAuthRoutes is a helper function to register routes to a router.
 func (s *Server) registerAuthRoutes(r *mux.Router) {
-	r.HandleFunc("/login", s.handleLogin).Methods("GET")
-	r.HandleFunc("/logout", s.handleLogout).Methods("DELETE")
 	r.HandleFunc("/oauth/github", s.handleOAuthGitHub).Methods("GET")
 	r.HandleFunc("/oauth/github/callback", s.handleOAuthGitHubCallback).Methods("GET")
-}
-
-// handleLogin handles the "GET /login" route. It simply renders an HTML login form.
-func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
-	var tmpl html.LoginTemplate
-	tmpl.Render(r.Context(), w)
-}
-
-// handleLogout handles the "DELETE /logout" route. It clears the session
-// cookie and redirects the user to the home page.
-func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	// Clear session cookie on HTTP response.
-	if err := s.setSession(w, Session{}); err != nil {
-		Error(w, r, err)
-		return
-	}
-
-	// Send user to the home page.
-	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // handleOAuthGitHub handles the "GET /oauth/github" route. It generates a
@@ -129,12 +109,12 @@ func (s *Server) handleOAuthGitHubCallback(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Create an authentication object with an associated user.
-	auth := &wtf.Auth{
-		Source:       wtf.AuthSourceGitHub,
+	auth := &booking.Auth{
+		Source:       booking.AuthSourceGitHub,
 		SourceID:     strconv.FormatInt(*u.ID, 10),
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,
-		User: &wtf.User{
+		User: &booking.User{
 			Name:  name,
 			Email: email,
 		},

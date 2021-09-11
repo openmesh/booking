@@ -9,10 +9,6 @@ import (
 type Booking struct {
 	ID int `json:"id"`
 
-	// Owner of the booking. Only the owner of the booking may make changes to it.
-	UserID int   `json:"userId"`
-	User   *User `json:"user"`
-
 	// The resource that the booking has been made for.
 	ResourceID int       `json:"resourceId"`
 	Resource   *Resource `json:"resource"`
@@ -86,3 +82,6 @@ type BookingUpdate struct {
 	Metadata   map[string]string `json:"metadata"`
 	Status     string            `json:"status"`
 }
+
+// BookingServiceMiddleware defines a middleware for a booking service.
+type BookingServiceMiddleware func(BookingService) BookingService

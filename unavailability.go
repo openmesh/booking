@@ -43,12 +43,12 @@ type UnavailabilityService interface {
 	//
 	// Returns ENOTFOUND if the unavailability does not exist or the user does not
 	// have permission to update it.
-	UpdateBooking(ctx context.Context, id int, upd BookingUpdate) (*Booking, error)
+	UpdateUnavailability(ctx context.Context, id int, upd UnavailabilityUpdate) (*Unavailability, error)
 
 	// Permanently removes a unavailability by ID. Only the unavailability owner
 	// may delete a unavailability. Returns ENOTFOUND if the unavailability does
 	// not exist or the user does not have permission to delete it.
-	DeleteBooking(ctx context.Context, id int) error
+	DeleteUnavailability(ctx context.Context, id int) error
 }
 
 // UnavailabilityFilter represents a filter used by FindUnavailabilities()
@@ -73,3 +73,6 @@ type UnavailabilityUpdate struct {
 	StartTime  time.Time `json:"startTime"`
 	EndTime    time.Time `json:"endTime"`
 }
+
+// UnavailabilityServiceMiddleware defines a middleware for an unavailability service.
+type UnavailabilityServiceMiddleware func(UnavailabilityService) UnavailabilityService

@@ -41,6 +41,15 @@ func UserIDFromContext(ctx context.Context) int {
 	return 0
 }
 
+// OrganizationIDFromContext is helper function that returns the OrganizationID
+// of the current user. Returns 0 if no user is authenticated.
+func OrganizationIDFromContext(ctx context.Context) int {
+	if user := UserFromContext(ctx); user != nil {
+		return user.OrganizationID
+	}
+	return 0
+}
+
 // NewContextWithFlash returns a new context with the given flash value.
 func NewContextWithFlash(ctx context.Context, v string) context.Context {
 	return context.WithValue(ctx, flashContextKey, v)

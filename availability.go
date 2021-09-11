@@ -19,7 +19,7 @@ type Availability struct {
 
 // AvailabilityService represents a service for querying resource availability.
 type AvailabilityService interface {
-	FindAvailabilties(ctx context.Context, filter AvailabilityFilter)
+	FindAvailabilties(ctx context.Context, filter AvailabilityFilter) ([]*Availability, int, error)
 }
 
 // AvailabilityFilter represents a filter used by FindAvailabilities()
@@ -37,3 +37,6 @@ type AvailabilityFilter struct {
 	// Availability property to order by.
 	OrderBy string `json:"orderBy"`
 }
+
+// AvailabilityServiceMiddleware defines a middleware for an availability service.
+type AvailabilityServiceMiddleware func(AvailabilityService) AvailabilityService

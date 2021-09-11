@@ -105,3 +105,6 @@ type AuthFilter struct {
 	Offset int `json:"offset"`
 	Limit  int `json:"limit"`
 }
+
+// AuthServiceMiddleware defines a middleware for an auth service.
+type AuthServiceMiddleware func(AuthService) AuthService

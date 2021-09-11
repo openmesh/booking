@@ -4,36 +4,20 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"path"
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/log"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
 	"github.com/openmesh/booking"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
-)
-
-// Generic HTTP metrics.
-var (
-	requestCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "booking_http_request_count",
-		Help: "Total number of requests by route",
-	}, []string{"method", "path"})
-
-	requestSeconds = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "booking_http_request_seconds",
-		Help: "Total amount of request time by route, in seconds",
-	}, []string{"method", "path"})
 )
 
 // ShutdownTimeout is the time given for outstanding requests to finish before shutdown.
@@ -47,6 +31,7 @@ type Server struct {
 	server *http.Server
 	router *mux.Router
 	sc     *securecookie.SecureCookie
+	logger log.Logger
 
 	// Bind address & domain for the server's listener.
 	// If domain is specified, server is run on TLS using acme/autocert.
@@ -66,9 +51,10 @@ type Server struct {
 	AvailabilityService   booking.AvailabilityService
 	BookingService        booking.BookingService
 	EventService          booking.EventService
-	UserService           booking.UserService
+	OrganizationService   booking.OrganizationService
 	ResourceService       booking.ResourceService
 	UnavailabilityService booking.UnavailabilityService
+	UserService           booking.UserService
 }
 
 // NewServer returns a new instance of Server.
@@ -91,8 +77,8 @@ func NewServer() *Server {
 	s.router.NotFoundHandler = http.HandlerFunc(s.handleNotFound)
 
 	// Handle embedded asset serving. This serves files embedded from http/assets.
-	s.router.PathPrefix("/assets/").
-		Handler(http.StripPrefix("/assets/", hashfs.FileServer(assets.FS)))
+	// s.router.PathPrefix("/assets/").
+	// 	Handler(http.StripPrefix("/assets/", hashfs.FileServer(assets.FS)))
 
 	// Setup endpoint to display deployed version.
 	s.router.HandleFunc("/debug/version", s.handleVersion).Methods("GET")
@@ -102,26 +88,26 @@ func NewServer() *Server {
 	router := s.router.PathPrefix("/").Subrouter()
 	router.Use(s.authenticate)
 	router.Use(loadFlash)
-	router.Use(trackMetrics)
+	// router.Use(trackMetrics)
 
 	// Handle authentication check within handler function for home page.
-	router.HandleFunc("/", s.handleIndex).Methods("GET")
+	// router.HandleFunc("/", s.handleIndex).Methods("GET")
 
 	// Register unauthenticated routes.
 	{
 		r := s.router.PathPrefix("/").Subrouter()
 		r.Use(s.requireNoAuth)
 		s.registerAuthRoutes(r)
+		s.registerOrganizationRoutes(r)
 	}
 
 	// Register authenticated routes.
 	{
 		r := router.PathPrefix("/").Subrouter()
 		r.Use(s.requireAuth)
-		r.HandleFunc("/settings", s.handleSettings).Methods("GET")
-		s.registerDialRoutes(r)
-		s.registerDialMembershipRoutes(r)
-		s.registerEventRoutes(r)
+		// s.registerDialRoutes(r)
+		// s.registerDialMembershipRoutes(r)
+		// s.registerEventRoutes(r)
 	}
 
 	return s
@@ -300,7 +286,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		// Read user, if available. Ignore if fetching assets.
 		if session.UserID != 0 {
 			if user, err := s.UserService.FindUserByID(r.Context(), session.UserID); err != nil {
-				log.Printf("cannot find session user: id=%d err=%s", session.UserID, err)
+				s.logger.Log("cannot find session user: id=%d err=%s", session.UserID, err)
 			} else {
 				r = r.WithContext(booking.NewContextWithUser(r.Context(), user))
 			}
@@ -344,7 +330,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		session, _ := s.session(r)
 		session.RedirectURL = redirectURL.String()
 		if err := s.setSession(w, session); err != nil {
-			log.Printf("http: cannot set session: %s", err)
+			s.logger.Log("http: cannot set session: %s", err)
 		}
 		http.Redirect(w, r, "/login", http.StatusFound)
 	})
@@ -362,24 +348,6 @@ func loadFlash(next http.Handler) http.Handler {
 
 		// Delegate to next HTTP handler.
 		next.ServeHTTP(w, r)
-	})
-}
-
-// trackMetrics is middleware for tracking the request count and timing per route.
-func trackMetrics(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Obtain path template & start time of request.
-		t := time.Now()
-		tmpl := requestPathTemplate(r)
-
-		// Delegate to next handler in middleware chain.
-		next.ServeHTTP(w, r)
-
-		// Track total time unless it is the WebSocket endpoint for events.
-		if tmpl != "" && tmpl != "/events" {
-			requestCount.WithLabelValues(r.Method, tmpl).Inc()
-			requestSeconds.WithLabelValues(r.Method, tmpl).Add(float64(time.Since(t).Seconds()))
-		}
 	})
 }
 
@@ -409,69 +377,7 @@ func reportPanic(next http.Handler) http.Handler {
 
 // handleNotFound handles requests to routes that don't exist.
 func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {
-	tmpl := html.ErrorTemplate{
-		StatusCode: http.StatusNotFound,
-		Header:     "Your page cannot be found.",
-		Message:    "Sorry, it looks like we can't find what you're looking for.",
-	}
-	tmpl.Render(r.Context(), w)
-}
-
-// handleIndex handles the "GET /" route. It displays a dashboard with the
-// user's dials, recently updated membership values, & a chart.
-func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	// If user is not logged in & application is built with a home page,
-	// return the home page. Otherwise redirect to login.
-	if booking.UserIDFromContext(r.Context()) == 0 {
-		if buf := assets.IndexHTML; len(buf) != 0 {
-			w.Write(buf)
-			return
-		}
-
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
-
-	var err error
-	var tmpl html.IndexTemplate
-
-	// Fetch all dials the user is a member of.
-	// If user is not a member of any dials, redirect to dial list which
-	// includes a description of how to start.
-	if tmpl.Dials, _, err = s.DialService.FindDials(r.Context(), wtf.DialFilter{}); err != nil {
-		Error(w, r, err)
-		return
-	} else if len(tmpl.Dials) == 0 {
-		http.Redirect(w, r, "/dials", http.StatusFound)
-		return
-	}
-
-	// Fetch recently updated members.
-	if tmpl.Memberships, _, err = s.DialMembershipService.FindDialMemberships(r.Context(), wtf.DialMembershipFilter{
-		Limit:  20,
-		SortBy: "updated_at_desc",
-	}); err != nil {
-		Error(w, r, err)
-		return
-	}
-
-	// Fetch historical average WTF values.
-	interval := time.Minute
-	end := time.Now().Truncate(interval).Add(interval)
-	start := end.Add(-1 * time.Hour)
-	if tmpl.AverageDialValueReport, err = s.DialService.AverageDialValueReport(r.Context(), start, end, interval); err != nil {
-		Error(w, r, err)
-		return
-	}
-
-	// Render the template to the response.
-	tmpl.Render(r.Context(), w)
-}
-
-// handleSettings handles the "GET /settings" route.
-func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
-	var tmpl html.SettingsTemplate
-	tmpl.Render(r.Context(), w)
+	w.Write([]byte("Not found"))
 }
 
 // handleVersion displays the deployed version.
@@ -546,6 +452,6 @@ func ListenAndServeTLSRedirect(domain string) error {
 // ListenAndServeDebug runs an HTTP server with /debug endpoints (e.g. pprof, vars).
 func ListenAndServeDebug() error {
 	h := http.NewServeMux()
-	h.Handle("/metrics", promhttp.Handler())
+	// h.Handle("/metrics", promhttp.Handler())
 	return http.ListenAndServe(":6060", h)
 }
