@@ -11,6 +11,7 @@ import (
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/organization"
+	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/slot"
@@ -29,13 +30,14 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAuth           = "Auth"
-	TypeBooking        = "Booking"
-	TypeOrganization   = "Organization"
-	TypeResource       = "Resource"
-	TypeSlot           = "Slot"
-	TypeUnavailability = "Unavailability"
-	TypeUser           = "User"
+	TypeAuth                  = "Auth"
+	TypeBooking               = "Booking"
+	TypeOrganization          = "Organization"
+	TypeOrganizationOwnership = "OrganizationOwnership"
+	TypeResource              = "Resource"
+	TypeSlot                  = "Slot"
+	TypeUnavailability        = "Unavailability"
+	TypeUser                  = "User"
 )
 
 // AuthMutation represents an operation that mutates the Auth nodes in the graph.
@@ -1482,6 +1484,7 @@ type OrganizationMutation struct {
 	updatedAt        *time.Time
 	name             *string
 	publicKey        *string
+	privateKey       *string
 	clearedFields    map[string]struct{}
 	users            map[int]struct{}
 	removedusers     map[int]struct{}
@@ -1489,8 +1492,6 @@ type OrganizationMutation struct {
 	resources        map[int]struct{}
 	removedresources map[int]struct{}
 	clearedresources bool
-	owner            *int
-	clearedowner     bool
 	done             bool
 	oldValue         func(context.Context) (*Organization, error)
 	predicates       []predicate.Organization
@@ -1719,40 +1720,40 @@ func (m *OrganizationMutation) ResetPublicKey() {
 	m.publicKey = nil
 }
 
-// SetOwnerId sets the "ownerId" field.
-func (m *OrganizationMutation) SetOwnerId(i int) {
-	m.owner = &i
+// SetPrivateKey sets the "privateKey" field.
+func (m *OrganizationMutation) SetPrivateKey(s string) {
+	m.privateKey = &s
 }
 
-// OwnerId returns the value of the "ownerId" field in the mutation.
-func (m *OrganizationMutation) OwnerId() (r int, exists bool) {
-	v := m.owner
+// PrivateKey returns the value of the "privateKey" field in the mutation.
+func (m *OrganizationMutation) PrivateKey() (r string, exists bool) {
+	v := m.privateKey
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldOwnerId returns the old "ownerId" field's value of the Organization entity.
+// OldPrivateKey returns the old "privateKey" field's value of the Organization entity.
 // If the Organization object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *OrganizationMutation) OldOwnerId(ctx context.Context) (v int, err error) {
+func (m *OrganizationMutation) OldPrivateKey(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldOwnerId is only allowed on UpdateOne operations")
+		return v, fmt.Errorf("OldPrivateKey is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldOwnerId requires an ID field in the mutation")
+		return v, fmt.Errorf("OldPrivateKey requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldOwnerId: %w", err)
+		return v, fmt.Errorf("querying old value for OldPrivateKey: %w", err)
 	}
-	return oldValue.OwnerId, nil
+	return oldValue.PrivateKey, nil
 }
 
-// ResetOwnerId resets all changes to the "ownerId" field.
-func (m *OrganizationMutation) ResetOwnerId() {
-	m.owner = nil
+// ResetPrivateKey resets all changes to the "privateKey" field.
+func (m *OrganizationMutation) ResetPrivateKey() {
+	m.privateKey = nil
 }
 
 // AddUserIDs adds the "users" edge to the User entity by ids.
@@ -1863,45 +1864,6 @@ func (m *OrganizationMutation) ResetResources() {
 	m.removedresources = nil
 }
 
-// SetOwnerID sets the "owner" edge to the User entity by id.
-func (m *OrganizationMutation) SetOwnerID(id int) {
-	m.owner = &id
-}
-
-// ClearOwner clears the "owner" edge to the User entity.
-func (m *OrganizationMutation) ClearOwner() {
-	m.clearedowner = true
-}
-
-// OwnerCleared reports if the "owner" edge to the User entity was cleared.
-func (m *OrganizationMutation) OwnerCleared() bool {
-	return m.clearedowner
-}
-
-// OwnerID returns the "owner" edge ID in the mutation.
-func (m *OrganizationMutation) OwnerID() (id int, exists bool) {
-	if m.owner != nil {
-		return *m.owner, true
-	}
-	return
-}
-
-// OwnerIDs returns the "owner" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// OwnerID instead. It exists only for internal usage by the builders.
-func (m *OrganizationMutation) OwnerIDs() (ids []int) {
-	if id := m.owner; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetOwner resets all changes to the "owner" edge.
-func (m *OrganizationMutation) ResetOwner() {
-	m.owner = nil
-	m.clearedowner = false
-}
-
 // Where appends a list predicates to the OrganizationMutation builder.
 func (m *OrganizationMutation) Where(ps ...predicate.Organization) {
 	m.predicates = append(m.predicates, ps...)
@@ -1934,8 +1896,8 @@ func (m *OrganizationMutation) Fields() []string {
 	if m.publicKey != nil {
 		fields = append(fields, organization.FieldPublicKey)
 	}
-	if m.owner != nil {
-		fields = append(fields, organization.FieldOwnerId)
+	if m.privateKey != nil {
+		fields = append(fields, organization.FieldPrivateKey)
 	}
 	return fields
 }
@@ -1953,8 +1915,8 @@ func (m *OrganizationMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case organization.FieldPublicKey:
 		return m.PublicKey()
-	case organization.FieldOwnerId:
-		return m.OwnerId()
+	case organization.FieldPrivateKey:
+		return m.PrivateKey()
 	}
 	return nil, false
 }
@@ -1972,8 +1934,8 @@ func (m *OrganizationMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldName(ctx)
 	case organization.FieldPublicKey:
 		return m.OldPublicKey(ctx)
-	case organization.FieldOwnerId:
-		return m.OldOwnerId(ctx)
+	case organization.FieldPrivateKey:
+		return m.OldPrivateKey(ctx)
 	}
 	return nil, fmt.Errorf("unknown Organization field %s", name)
 }
@@ -2011,12 +1973,12 @@ func (m *OrganizationMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPublicKey(v)
 		return nil
-	case organization.FieldOwnerId:
-		v, ok := value.(int)
+	case organization.FieldPrivateKey:
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetOwnerId(v)
+		m.SetPrivateKey(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Organization field %s", name)
@@ -2025,16 +1987,13 @@ func (m *OrganizationMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *OrganizationMutation) AddedFields() []string {
-	var fields []string
-	return fields
+	return nil
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *OrganizationMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	}
 	return nil, false
 }
 
@@ -2082,8 +2041,8 @@ func (m *OrganizationMutation) ResetField(name string) error {
 	case organization.FieldPublicKey:
 		m.ResetPublicKey()
 		return nil
-	case organization.FieldOwnerId:
-		m.ResetOwnerId()
+	case organization.FieldPrivateKey:
+		m.ResetPrivateKey()
 		return nil
 	}
 	return fmt.Errorf("unknown Organization field %s", name)
@@ -2091,15 +2050,12 @@ func (m *OrganizationMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *OrganizationMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 2)
 	if m.users != nil {
 		edges = append(edges, organization.EdgeUsers)
 	}
 	if m.resources != nil {
 		edges = append(edges, organization.EdgeResources)
-	}
-	if m.owner != nil {
-		edges = append(edges, organization.EdgeOwner)
 	}
 	return edges
 }
@@ -2120,17 +2076,13 @@ func (m *OrganizationMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case organization.EdgeOwner:
-		if id := m.owner; id != nil {
-			return []ent.Value{*id}
-		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *OrganizationMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 2)
 	if m.removedusers != nil {
 		edges = append(edges, organization.EdgeUsers)
 	}
@@ -2162,15 +2114,12 @@ func (m *OrganizationMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *OrganizationMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 2)
 	if m.clearedusers {
 		edges = append(edges, organization.EdgeUsers)
 	}
 	if m.clearedresources {
 		edges = append(edges, organization.EdgeResources)
-	}
-	if m.clearedowner {
-		edges = append(edges, organization.EdgeOwner)
 	}
 	return edges
 }
@@ -2183,8 +2132,6 @@ func (m *OrganizationMutation) EdgeCleared(name string) bool {
 		return m.clearedusers
 	case organization.EdgeResources:
 		return m.clearedresources
-	case organization.EdgeOwner:
-		return m.clearedowner
 	}
 	return false
 }
@@ -2193,9 +2140,6 @@ func (m *OrganizationMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *OrganizationMutation) ClearEdge(name string) error {
 	switch name {
-	case organization.EdgeOwner:
-		m.ClearOwner()
-		return nil
 	}
 	return fmt.Errorf("unknown Organization unique edge %s", name)
 }
@@ -2210,11 +2154,483 @@ func (m *OrganizationMutation) ResetEdge(name string) error {
 	case organization.EdgeResources:
 		m.ResetResources()
 		return nil
-	case organization.EdgeOwner:
-		m.ResetOwner()
-		return nil
 	}
 	return fmt.Errorf("unknown Organization edge %s", name)
+}
+
+// OrganizationOwnershipMutation represents an operation that mutates the OrganizationOwnership nodes in the graph.
+type OrganizationOwnershipMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	clearedFields       map[string]struct{}
+	user                *int
+	cleareduser         bool
+	organization        *int
+	clearedorganization bool
+	done                bool
+	oldValue            func(context.Context) (*OrganizationOwnership, error)
+	predicates          []predicate.OrganizationOwnership
+}
+
+var _ ent.Mutation = (*OrganizationOwnershipMutation)(nil)
+
+// organizationownershipOption allows management of the mutation configuration using functional options.
+type organizationownershipOption func(*OrganizationOwnershipMutation)
+
+// newOrganizationOwnershipMutation creates new mutation for the OrganizationOwnership entity.
+func newOrganizationOwnershipMutation(c config, op Op, opts ...organizationownershipOption) *OrganizationOwnershipMutation {
+	m := &OrganizationOwnershipMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeOrganizationOwnership,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withOrganizationOwnershipID sets the ID field of the mutation.
+func withOrganizationOwnershipID(id int) organizationownershipOption {
+	return func(m *OrganizationOwnershipMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *OrganizationOwnership
+		)
+		m.oldValue = func(ctx context.Context) (*OrganizationOwnership, error) {
+			once.Do(func() {
+				if m.done {
+					err = fmt.Errorf("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().OrganizationOwnership.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withOrganizationOwnership sets the old OrganizationOwnership of the mutation.
+func withOrganizationOwnership(node *OrganizationOwnership) organizationownershipOption {
+	return func(m *OrganizationOwnershipMutation) {
+		m.oldValue = func(context.Context) (*OrganizationOwnership, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m OrganizationOwnershipMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m OrganizationOwnershipMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, fmt.Errorf("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *OrganizationOwnershipMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// SetUserId sets the "userId" field.
+func (m *OrganizationOwnershipMutation) SetUserId(i int) {
+	m.user = &i
+}
+
+// UserId returns the value of the "userId" field in the mutation.
+func (m *OrganizationOwnershipMutation) UserId() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserId returns the old "userId" field's value of the OrganizationOwnership entity.
+// If the OrganizationOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *OrganizationOwnershipMutation) OldUserId(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldUserId is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldUserId requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserId: %w", err)
+	}
+	return oldValue.UserId, nil
+}
+
+// ResetUserId resets all changes to the "userId" field.
+func (m *OrganizationOwnershipMutation) ResetUserId() {
+	m.user = nil
+}
+
+// SetOrganizationId sets the "organizationId" field.
+func (m *OrganizationOwnershipMutation) SetOrganizationId(i int) {
+	m.organization = &i
+}
+
+// OrganizationId returns the value of the "organizationId" field in the mutation.
+func (m *OrganizationOwnershipMutation) OrganizationId() (r int, exists bool) {
+	v := m.organization
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrganizationId returns the old "organizationId" field's value of the OrganizationOwnership entity.
+// If the OrganizationOwnership object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *OrganizationOwnershipMutation) OldOrganizationId(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldOrganizationId is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldOrganizationId requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrganizationId: %w", err)
+	}
+	return oldValue.OrganizationId, nil
+}
+
+// ResetOrganizationId resets all changes to the "organizationId" field.
+func (m *OrganizationOwnershipMutation) ResetOrganizationId() {
+	m.organization = nil
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *OrganizationOwnershipMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *OrganizationOwnershipMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *OrganizationOwnershipMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *OrganizationOwnershipMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *OrganizationOwnershipMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *OrganizationOwnershipMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// SetOrganizationID sets the "organization" edge to the Organization entity by id.
+func (m *OrganizationOwnershipMutation) SetOrganizationID(id int) {
+	m.organization = &id
+}
+
+// ClearOrganization clears the "organization" edge to the Organization entity.
+func (m *OrganizationOwnershipMutation) ClearOrganization() {
+	m.clearedorganization = true
+}
+
+// OrganizationCleared reports if the "organization" edge to the Organization entity was cleared.
+func (m *OrganizationOwnershipMutation) OrganizationCleared() bool {
+	return m.clearedorganization
+}
+
+// OrganizationID returns the "organization" edge ID in the mutation.
+func (m *OrganizationOwnershipMutation) OrganizationID() (id int, exists bool) {
+	if m.organization != nil {
+		return *m.organization, true
+	}
+	return
+}
+
+// OrganizationIDs returns the "organization" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// OrganizationID instead. It exists only for internal usage by the builders.
+func (m *OrganizationOwnershipMutation) OrganizationIDs() (ids []int) {
+	if id := m.organization; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetOrganization resets all changes to the "organization" edge.
+func (m *OrganizationOwnershipMutation) ResetOrganization() {
+	m.organization = nil
+	m.clearedorganization = false
+}
+
+// Where appends a list predicates to the OrganizationOwnershipMutation builder.
+func (m *OrganizationOwnershipMutation) Where(ps ...predicate.OrganizationOwnership) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// Op returns the operation name.
+func (m *OrganizationOwnershipMutation) Op() Op {
+	return m.op
+}
+
+// Type returns the node type of this mutation (OrganizationOwnership).
+func (m *OrganizationOwnershipMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *OrganizationOwnershipMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.user != nil {
+		fields = append(fields, organizationownership.FieldUserId)
+	}
+	if m.organization != nil {
+		fields = append(fields, organizationownership.FieldOrganizationId)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *OrganizationOwnershipMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case organizationownership.FieldUserId:
+		return m.UserId()
+	case organizationownership.FieldOrganizationId:
+		return m.OrganizationId()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *OrganizationOwnershipMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case organizationownership.FieldUserId:
+		return m.OldUserId(ctx)
+	case organizationownership.FieldOrganizationId:
+		return m.OldOrganizationId(ctx)
+	}
+	return nil, fmt.Errorf("unknown OrganizationOwnership field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *OrganizationOwnershipMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case organizationownership.FieldUserId:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserId(v)
+		return nil
+	case organizationownership.FieldOrganizationId:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrganizationId(v)
+		return nil
+	}
+	return fmt.Errorf("unknown OrganizationOwnership field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *OrganizationOwnershipMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *OrganizationOwnershipMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *OrganizationOwnershipMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown OrganizationOwnership numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *OrganizationOwnershipMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *OrganizationOwnershipMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *OrganizationOwnershipMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown OrganizationOwnership nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *OrganizationOwnershipMutation) ResetField(name string) error {
+	switch name {
+	case organizationownership.FieldUserId:
+		m.ResetUserId()
+		return nil
+	case organizationownership.FieldOrganizationId:
+		m.ResetOrganizationId()
+		return nil
+	}
+	return fmt.Errorf("unknown OrganizationOwnership field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *OrganizationOwnershipMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.user != nil {
+		edges = append(edges, organizationownership.EdgeUser)
+	}
+	if m.organization != nil {
+		edges = append(edges, organizationownership.EdgeOrganization)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *OrganizationOwnershipMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case organizationownership.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case organizationownership.EdgeOrganization:
+		if id := m.organization; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *OrganizationOwnershipMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *OrganizationOwnershipMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *OrganizationOwnershipMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareduser {
+		edges = append(edges, organizationownership.EdgeUser)
+	}
+	if m.clearedorganization {
+		edges = append(edges, organizationownership.EdgeOrganization)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *OrganizationOwnershipMutation) EdgeCleared(name string) bool {
+	switch name {
+	case organizationownership.EdgeUser:
+		return m.cleareduser
+	case organizationownership.EdgeOrganization:
+		return m.clearedorganization
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *OrganizationOwnershipMutation) ClearEdge(name string) error {
+	switch name {
+	case organizationownership.EdgeUser:
+		m.ClearUser()
+		return nil
+	case organizationownership.EdgeOrganization:
+		m.ClearOrganization()
+		return nil
+	}
+	return fmt.Errorf("unknown OrganizationOwnership unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *OrganizationOwnershipMutation) ResetEdge(name string) error {
+	switch name {
+	case organizationownership.EdgeUser:
+		m.ResetUser()
+		return nil
+	case organizationownership.EdgeOrganization:
+		m.ResetOrganization()
+		return nil
+	}
+	return fmt.Errorf("unknown OrganizationOwnership edge %s", name)
 }
 
 // ResourceMutation represents an operation that mutates the Resource nodes in the graph.

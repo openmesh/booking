@@ -2,6 +2,7 @@ package ent
 
 import (
 	"context"
+	"github.com/openmesh/booking/ent/organization"
 	"math/rand"
 
 	"github.com/openmesh/booking"
@@ -26,6 +27,14 @@ func (s *organizationService) FindCurrentOrganization(ctx context.Context) (*boo
 	return o.toModel(), nil
 }
 
+func (s *organizationService) FindOrganizationByPrivateKey(ctx context.Context, key string) (*booking.Organization, error) {
+	org, err := s.client.Organization.
+		Query().
+		Where(organization.PrivateKey(key)).
+		First(ctx)
+	return org.toModel(), err
+}
+
 func (s *organizationService) UpdateOrganization(ctx context.Context, upd booking.OrganizationUpdate) (*booking.Organization, error) {
 	organizationID := booking.OrganizationIDFromContext(ctx)
 	updateBuilder := s.client.Organization.UpdateOneID(organizationID)
@@ -33,24 +42,22 @@ func (s *organizationService) UpdateOrganization(ctx context.Context, upd bookin
 	if upd.Name != nil {
 		updateBuilder.SetName(*upd.Name)
 	}
-	if upd.OwnerID != nil {
-		updateBuilder.SetOwnerID(*upd.OwnerID)
-	}
 
-	organization, err := updateBuilder.Save(ctx)
+	org, err := updateBuilder.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return organization.toModel(), nil
+	return org.toModel(), nil
 }
 
 func (s *organizationService) CreateOrganization(ctx context.Context, organization *booking.Organization) error {
-	entity, err := s.client.Organization.Create().
-		SetPublicKey(generateKey()).
-		// SetPrivateKey(generateKey()).
+	tx, err := s.client.Tx(ctx)
+
+	entity, err := tx.Organization.Create().
+		SetPublicKey(randStringBytes(16)).
+		SetPrivateKey(randStringBytes(16)).
 		SetName(organization.Name).
-		SetOwnerID(organization.OwnerID).
 		Save(ctx)
 
 	if err != nil {
@@ -62,9 +69,13 @@ func (s *organizationService) CreateOrganization(ctx context.Context, organizati
 	return nil
 }
 
-func generateKey() string {
-	b := make([]byte, 16)
-	rand.Read(b)
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func randStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
 	return string(b)
 }
 

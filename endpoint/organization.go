@@ -7,24 +7,27 @@ import (
 	"github.com/openmesh/booking"
 )
 
-// OrganizationEndpoints collects all of the endpoints that compose an
-// organization service. It's used as a helper struct, to collect all of the
+// OrganizationEndpoints collects all the endpoints that compose an
+// organization service. It's used as a helper struct, to collect all the
 // endpoints into a single parameter.
 type OrganizationEndpoints struct {
-	FindCurrentOrganizationEndpoint endpoint.Endpoint
-	CreateOrganizationEndpoint      endpoint.Endpoint
-	UpdateOrganizationEndpoint      endpoint.Endpoint
+	FindCurrentOrganizationEndpoint      endpoint.Endpoint
+	FindOrganizationByPrivateKeyEndpoint endpoint.Endpoint
+	CreateOrganizationEndpoint           endpoint.Endpoint
+	UpdateOrganizationEndpoint           endpoint.Endpoint
 }
 
-// MakeOrganizationServerEndpoints returns an OrganizationEndpoints struct where
+// MakeOrganizationEndpoints returns an OrganizationEndpoints struct where
 // each endpoint invokes the corresponding method on the provided service.
-func MakeOrganizationServerEndpoints(s booking.OrganizationService) OrganizationEndpoints {
+func MakeOrganizationEndpoints(s booking.OrganizationService) OrganizationEndpoints {
 	return OrganizationEndpoints{
 		FindCurrentOrganizationEndpoint: MakeFindCurrentOrganizationEndpoint(s),
+		CreateOrganizationEndpoint:      MakeCreateOrganizationEndpoint(s),
+		UpdateOrganizationEndpoint:      MakeUpdateOrganizationEndpoint(s),
 	}
 }
 
-// MakeFindCurrentOrganizationEndpoints returns an endpoint via the passed service.
+// MakeFindCurrentOrganizationEndpoint returns an endpoint via the passed service.
 func MakeFindCurrentOrganizationEndpoint(s booking.OrganizationService) endpoint.Endpoint {
 	return func(ctx context.Context, _ interface{}) (interface{}, error) {
 		organization, err := s.FindCurrentOrganization(ctx)
@@ -32,7 +35,7 @@ func MakeFindCurrentOrganizationEndpoint(s booking.OrganizationService) endpoint
 	}
 }
 
-// MakeCreateOrganizationEndpoints returns an endpoint via the passed service.
+// MakeCreateOrganizationEndpoint returns an endpoint via the passed service.
 func MakeCreateOrganizationEndpoint(s booking.OrganizationService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(CreateOrganizationRequest)
@@ -41,7 +44,7 @@ func MakeCreateOrganizationEndpoint(s booking.OrganizationService) endpoint.Endp
 	}
 }
 
-// MakeCreateOrganizationEndpoints returns an endpoint via the passed service.
+// MakeUpdateOrganizationEndpoint returns an endpoint via the passed service.
 func MakeUpdateOrganizationEndpoint(s booking.OrganizationService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(UpdateOrganizationRequest)
@@ -53,6 +56,10 @@ func MakeUpdateOrganizationEndpoint(s booking.OrganizationService) endpoint.Endp
 type FindCurrentOrganizationResponse struct {
 	Organization *booking.Organization `json:"organization,omitempty"`
 	Err          error                 `json:"err,omitempty"`
+}
+
+type FindOrganizationByPrivateKeyRequest struct {
+	Key string
 }
 
 type CreateOrganizationRequest struct {

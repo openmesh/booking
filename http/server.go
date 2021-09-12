@@ -46,7 +46,7 @@ type Server struct {
 	GitHubClientID     string
 	GitHubClientSecret string
 
-	// Servics used by the various HTTP routes.
+	// Services used by the various HTTP routes.
 	AuthService           booking.AuthService
 	AvailabilityService   booking.AvailabilityService
 	BookingService        booking.BookingService
@@ -55,6 +55,8 @@ type Server struct {
 	ResourceService       booking.ResourceService
 	UnavailabilityService booking.UnavailabilityService
 	UserService           booking.UserService
+
+	Handler booking.Handler
 }
 
 // NewServer returns a new instance of Server.
@@ -77,8 +79,8 @@ func NewServer() *Server {
 	s.router.NotFoundHandler = http.HandlerFunc(s.handleNotFound)
 
 	// Handle embedded asset serving. This serves files embedded from http/assets.
-	// s.router.PathPrefix("/assets/").
-	// 	Handler(http.StripPrefix("/assets/", hashfs.FileServer(assets.FS)))
+	//fs := http.FileServer(http.Dir("./http/assets"))
+	//s.router.PathPrefix("/static/").Handler(fs)
 
 	// Setup endpoint to display deployed version.
 	s.router.HandleFunc("/debug/version", s.handleVersion).Methods("GET")
@@ -86,13 +88,29 @@ func NewServer() *Server {
 
 	// Setup a base router that excludes asset handling.
 	router := s.router.PathPrefix("/").Subrouter()
-	router.Use(s.authenticate)
 	router.Use(loadFlash)
+
+	//spaRoutes := []string{
+	//	"/",
+	//	"/signup",
+	//}
+	//
+	//for _, route := range spaRoutes {
+	//	router.HandleFunc(route, s.handleSpaRoute).Methods("GET")
+	//}
+	//
+	//router.HandleFunc("/manifest", s.handleManifest).Methods("GET")
+
 	// router.Use(trackMetrics)
 
 	// Handle authentication check within handler function for home page.
 	// router.HandleFunc("/", s.handleIndex).Methods("GET")
 
+	return s
+}
+
+func (s *Server) RegisterRoutes() {
+	s.router.Use(s.authenticate)
 	// Register unauthenticated routes.
 	{
 		r := s.router.PathPrefix("/").Subrouter()
@@ -100,17 +118,15 @@ func NewServer() *Server {
 		s.registerAuthRoutes(r)
 		s.registerOrganizationRoutes(r)
 	}
-
 	// Register authenticated routes.
 	{
-		r := router.PathPrefix("/").Subrouter()
+		r := s.router.PathPrefix("/").Subrouter()
 		r.Use(s.requireAuth)
+		s.registerResourceRoutes(r)
 		// s.registerDialRoutes(r)
 		// s.registerDialMembershipRoutes(r)
 		// s.registerEventRoutes(r)
 	}
-
-	return s
 }
 
 // UseTLS returns true if the cert & key file are specified.
@@ -261,24 +277,26 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		if v := r.Header.Get("Authorization"); strings.HasPrefix(v, "Bearer ") {
 			apiKey := strings.TrimPrefix(v, "Bearer ")
 
-			// Lookup user by API key. Display error if not found.
-			// Otherwise set
-			users, _, err := s.UserService.FindUsers(r.Context(), booking.UserFilter{APIKey: &apiKey})
-			if err != nil {
-				Error(w, r, err)
-				return
-			} else if len(users) == 0 {
+			// Lookup organization by API key. Display error if not found.
+			org, err := s.OrganizationService.FindOrganizationByPrivateKey(r.Context(), apiKey)
+			if err != nil && booking.ErrorCode(err) == booking.ENOTFOUND {
 				Error(w, r, booking.Errorf(booking.EUNAUTHORIZED, "Invalid API key."))
+				return
+			} else if err != nil {
+				Error(w, r, err)
 				return
 			}
 
 			// Update request context to include authenticated user.
-			r = r.WithContext(booking.NewContextWithUser(r.Context(), users[0]))
+			r = r.WithContext(booking.NewContextWithOrganization(r.Context(), org))
 
 			// Delegate to next HTTP handler.
 			next.ServeHTTP(w, r)
 			return
 		}
+
+		Error(w, r, booking.Errorf(booking.EUNAUTHORIZED, "No API key present."))
+		return
 
 		// Read session from secure cookie.
 		session, _ := s.session(r)
@@ -315,6 +333,10 @@ func (s *Server) requireNoAuth(next http.Handler) http.Handler {
 // nearly every page except for the login & oauth pages.
 func (s *Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if orgID := booking.OrganizationIDFromContext(r.Context()); orgID != 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
 		// If user is logged in, delegate to next HTTP handler.
 		if userID := booking.UserIDFromContext(r.Context()); userID != 0 {
 			next.ServeHTTP(w, r)
@@ -454,4 +476,12 @@ func ListenAndServeDebug() error {
 	h := http.NewServeMux()
 	// h.Handle("/metrics", promhttp.Handler())
 	return http.ListenAndServe(":6060", h)
+}
+
+func (s *Server) handleSpaRoute(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "./http/assets/index.html")
+}
+
+func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "./http/assets/manifest.json")
 }

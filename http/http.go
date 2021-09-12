@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -10,6 +11,12 @@ import (
 	"strings"
 
 	"github.com/openmesh/booking"
+)
+
+var (
+	// ErrBadRouting is returned when an expected path variable is missing.
+	// It always indicates programmer error.
+	ErrBadRouting = errors.New("inconsistent mapping between route and handler (programmer error)")
 )
 
 // Client represents an HTTP client.
@@ -32,9 +39,9 @@ func (c *Client) newRequest(ctx context.Context, method, url string, body io.Rea
 	}
 
 	// Set API key in header.
-	if user := booking.UserFromContext(ctx); user != nil && user.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+user.APIKey)
-	}
+	//if user := booking.UserFromContext(ctx); user != nil && user.APIKey != "" {
+	//	req.Header.Set("Authorization", "Bearer "+user.APIKey)
+	//}
 
 	// Default to JSON format.
 	req.Header.Set("Accept", "application/json")

@@ -6,6 +6,24 @@ import (
 	"github.com/openmesh/booking"
 )
 
+type handler struct {
+	client *Client
+}
+
+func NewHandler(client *Client) *handler {
+	return &handler{
+		client,
+	}
+}
+
+func (h *handler) Handle(ctx context.Context, query booking.FindResourceByIDQuery) (*booking.Resource, error) {
+	r, err := h.client.Resource.Get(ctx, query.ID)
+	if err != nil {
+		return nil, err
+	}
+	return r.toModel(), nil
+}
+
 type resourceService struct {
 	client *Client
 }
@@ -28,10 +46,10 @@ func (s *resourceService) FindResources(ctx context.Context, filter booking.Reso
 	return []*booking.Resource{}, 0, nil
 }
 
-func (s *resourceService) CreateResource(ctx context.Context, resource *booking.Resource) error {
+func (s *resourceService) CreateResource(ctx context.Context, resource *booking.Resource) (*booking.Resource, error) {
 	organizationID := booking.OrganizationIDFromContext(ctx)
 	if organizationID == 0 {
-		return booking.Errorf(booking.EUNAUTHORIZED, "Failed to create resource: No user authenticated")
+		return nil,booking.Errorf(booking.EUNAUTHORIZED, "Failed to create resource: No user authenticated")
 	}
 
 	entity, err := s.client.Resource.Create().
@@ -45,12 +63,12 @@ func (s *resourceService) CreateResource(ctx context.Context, resource *booking.
 		Save(ctx)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resource = entity.toModel()
 
-	return nil
+	return resource, nil
 }
 
 func (s *resourceService) UpdateResource(ctx context.Context, id int, upd booking.ResourceUpdate) (*booking.Resource, error) {
@@ -78,8 +96,7 @@ func (s *resourceService) DeleteResource(ctx context.Context, id int) error {
 func (r *Resource) toModel() *booking.Resource {
 	result := &booking.Resource{
 		ID:             r.ID,
-		OrganizationID: r.Edges.Organization.ID,
-		Organization:   r.Edges.Organization.toModel(),
+		OrganizationID: r.OrganizationId,
 		Name:           r.Name,
 		Description:    r.Description,
 		Timezone:       r.Timezone,
@@ -90,8 +107,14 @@ func (r *Resource) toModel() *booking.Resource {
 		UpdatedAt:      r.UpdatedAt,
 	}
 
-	for _, s := range r.Edges.Slots {
-		result.Slots = append(result.Slots, s.toModel())
+	if r.Edges.Organization != nil {
+		result.Organization = r.Edges.Organization.toModel()
+	}
+
+	if r.Edges.Slots != nil {
+		for _, s := range r.Edges.Slots {
+			result.Slots = append(result.Slots, s.toModel())
+		}
 	}
 
 	return result

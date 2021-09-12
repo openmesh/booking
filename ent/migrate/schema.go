@@ -65,19 +65,56 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "name", Type: field.TypeString},
 		{Name: "public_key", Type: field.TypeString},
-		{Name: "owner_id", Type: field.TypeInt, Nullable: true},
+		{Name: "private_key", Type: field.TypeString},
 	}
 	// OrganizationsTable holds the schema information for the "organizations" table.
 	OrganizationsTable = &schema.Table{
 		Name:       "organizations",
 		Columns:    OrganizationsColumns,
 		PrimaryKey: []*schema.Column{OrganizationsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "organization_private_key",
+				Unique:  true,
+				Columns: []*schema.Column{OrganizationsColumns[5]},
+			},
+			{
+				Name:    "organization_public_key",
+				Unique:  true,
+				Columns: []*schema.Column{OrganizationsColumns[4]},
+			},
+		},
+	}
+	// OrganizationOwnershipsColumns holds the columns for the "organization_ownerships" table.
+	OrganizationOwnershipsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "user_id", Type: field.TypeInt, Nullable: true},
+		{Name: "organization_id", Type: field.TypeInt, Nullable: true},
+	}
+	// OrganizationOwnershipsTable holds the schema information for the "organization_ownerships" table.
+	OrganizationOwnershipsTable = &schema.Table{
+		Name:       "organization_ownerships",
+		Columns:    OrganizationOwnershipsColumns,
+		PrimaryKey: []*schema.Column{OrganizationOwnershipsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "organizations_users_owner",
-				Columns:    []*schema.Column{OrganizationsColumns[5]},
+				Symbol:     "organization_ownerships_users_user",
+				Columns:    []*schema.Column{OrganizationOwnershipsColumns[1]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "organization_ownerships_organizations_organization",
+				Columns:    []*schema.Column{OrganizationOwnershipsColumns[2]},
+				RefColumns: []*schema.Column{OrganizationsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "organizationownership_user_id_organization_id",
+				Unique:  true,
+				Columns: []*schema.Column{OrganizationOwnershipsColumns[1], OrganizationOwnershipsColumns[2]},
 			},
 		},
 	}
@@ -182,6 +219,7 @@ var (
 		AuthsTable,
 		BookingsTable,
 		OrganizationsTable,
+		OrganizationOwnershipsTable,
 		ResourcesTable,
 		SlotsTable,
 		UnavailabilitiesTable,
@@ -192,7 +230,8 @@ var (
 func init() {
 	AuthsTable.ForeignKeys[0].RefTable = UsersTable
 	BookingsTable.ForeignKeys[0].RefTable = ResourcesTable
-	OrganizationsTable.ForeignKeys[0].RefTable = UsersTable
+	OrganizationOwnershipsTable.ForeignKeys[0].RefTable = UsersTable
+	OrganizationOwnershipsTable.ForeignKeys[1].RefTable = OrganizationsTable
 	ResourcesTable.ForeignKeys[0].RefTable = OrganizationsTable
 	SlotsTable.ForeignKeys[0].RefTable = ResourcesTable
 	UnavailabilitiesTable.ForeignKeys[0].RefTable = ResourcesTable

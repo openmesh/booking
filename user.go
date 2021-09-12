@@ -16,20 +16,12 @@ type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
-	// Randomly generated API key to be used by clients to identify themselves.
-	PublicAPIKey string `json:"-"`
-
-	// Randomly generated API key to be used by secure application to identify themselves.
-	PrivateAPIKey string `json:"-"`
-
-	APIKey string `json:"-"`
-
 	// Timestamps for user creation & last update.
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 
 	// List of associated OAuth authentication objects.
-	// Currently only GitHub is supported so there should only be a maximum of one.
+	// Currently, only GitHub is supported so there should only be a maximum of one.
 	Auths []*Auth `json:"auths"`
 }
 

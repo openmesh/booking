@@ -30,7 +30,6 @@ type OrganizationQuery struct {
 	// eager-loading edges.
 	withUsers     *UserQuery
 	withResources *ResourceQuery
-	withOwner     *UserQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -104,28 +103,6 @@ func (oq *OrganizationQuery) QueryResources() *ResourceQuery {
 			sqlgraph.From(organization.Table, organization.FieldID, selector),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, organization.ResourcesTable, organization.ResourcesColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryOwner chains the current query on the "owner" edge.
-func (oq *OrganizationQuery) QueryOwner() *UserQuery {
-	query := &UserQuery{config: oq.config}
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := oq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := oq.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(organization.Table, organization.FieldID, selector),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, organization.OwnerTable, organization.OwnerColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
 		return fromU, nil
@@ -316,7 +293,6 @@ func (oq *OrganizationQuery) Clone() *OrganizationQuery {
 		predicates:    append([]predicate.Organization{}, oq.predicates...),
 		withUsers:     oq.withUsers.Clone(),
 		withResources: oq.withResources.Clone(),
-		withOwner:     oq.withOwner.Clone(),
 		// clone intermediate query.
 		sql:  oq.sql.Clone(),
 		path: oq.path,
@@ -342,17 +318,6 @@ func (oq *OrganizationQuery) WithResources(opts ...func(*ResourceQuery)) *Organi
 		opt(query)
 	}
 	oq.withResources = query
-	return oq
-}
-
-// WithOwner tells the query-builder to eager-load the nodes that are connected to
-// the "owner" edge. The optional arguments are used to configure the query builder of the edge.
-func (oq *OrganizationQuery) WithOwner(opts ...func(*UserQuery)) *OrganizationQuery {
-	query := &UserQuery{config: oq.config}
-	for _, opt := range opts {
-		opt(query)
-	}
-	oq.withOwner = query
 	return oq
 }
 
@@ -421,10 +386,9 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context) ([]*Organization, error
 	var (
 		nodes       = []*Organization{}
 		_spec       = oq.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [2]bool{
 			oq.withUsers != nil,
 			oq.withResources != nil,
-			oq.withOwner != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -494,32 +458,6 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context) ([]*Organization, error
 				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, fk, n.ID)
 			}
 			node.Edges.Resources = append(node.Edges.Resources, n)
-		}
-	}
-
-	if query := oq.withOwner; query != nil {
-		ids := make([]int, 0, len(nodes))
-		nodeids := make(map[int][]*Organization)
-		for i := range nodes {
-			fk := nodes[i].OwnerId
-			if _, ok := nodeids[fk]; !ok {
-				ids = append(ids, fk)
-			}
-			nodeids[fk] = append(nodeids[fk], nodes[i])
-		}
-		query.Where(user.IDIn(ids...))
-		neighbors, err := query.All(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, n := range neighbors {
-			nodes, ok := nodeids[n.ID]
-			if !ok {
-				return nil, fmt.Errorf(`unexpected foreign-key "ownerId" returned %v`, n.ID)
-			}
-			for i := range nodes {
-				nodes[i].Edges.Owner = n
-			}
 		}
 	}
 

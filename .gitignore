@@ -1,1 +1,4 @@
 .idea/
+/ui/node_modules/
+/ui/public/
+/http/assets/

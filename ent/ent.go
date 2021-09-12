@@ -11,6 +11,7 @@ import (
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/organization"
+	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/slot"
 	"github.com/openmesh/booking/ent/unavailability"
@@ -35,13 +36,14 @@ type OrderFunc func(*sql.Selector)
 // columnChecker returns a function indicates if the column exists in the given column.
 func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
-		auth.Table:           auth.ValidColumn,
-		booking.Table:        booking.ValidColumn,
-		organization.Table:   organization.ValidColumn,
-		resource.Table:       resource.ValidColumn,
-		slot.Table:           slot.ValidColumn,
-		unavailability.Table: unavailability.ValidColumn,
-		user.Table:           user.ValidColumn,
+		auth.Table:                  auth.ValidColumn,
+		booking.Table:               booking.ValidColumn,
+		organization.Table:          organization.ValidColumn,
+		organizationownership.Table: organizationownership.ValidColumn,
+		resource.Table:              resource.ValidColumn,
+		slot.Table:                  slot.ValidColumn,
+		unavailability.Table:        unavailability.ValidColumn,
+		user.Table:                  user.ValidColumn,
 	}
 	check, ok := checks[table]
 	if !ok {

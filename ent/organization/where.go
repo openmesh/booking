@@ -121,10 +121,10 @@ func PublicKey(v string) predicate.Organization {
 	})
 }
 
-// OwnerId applies equality check predicate on the "ownerId" field. It's identical to OwnerIdEQ.
-func OwnerId(v int) predicate.Organization {
+// PrivateKey applies equality check predicate on the "privateKey" field. It's identical to PrivateKeyEQ.
+func PrivateKey(v string) predicate.Organization {
 	return predicate.Organization(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldOwnerId), v))
+		s.Where(sql.EQ(s.C(FieldPrivateKey), v))
 	})
 }
 
@@ -502,22 +502,22 @@ func PublicKeyContainsFold(v string) predicate.Organization {
 	})
 }
 
-// OwnerIdEQ applies the EQ predicate on the "ownerId" field.
-func OwnerIdEQ(v int) predicate.Organization {
+// PrivateKeyEQ applies the EQ predicate on the "privateKey" field.
+func PrivateKeyEQ(v string) predicate.Organization {
 	return predicate.Organization(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldOwnerId), v))
+		s.Where(sql.EQ(s.C(FieldPrivateKey), v))
 	})
 }
 
-// OwnerIdNEQ applies the NEQ predicate on the "ownerId" field.
-func OwnerIdNEQ(v int) predicate.Organization {
+// PrivateKeyNEQ applies the NEQ predicate on the "privateKey" field.
+func PrivateKeyNEQ(v string) predicate.Organization {
 	return predicate.Organization(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldOwnerId), v))
+		s.Where(sql.NEQ(s.C(FieldPrivateKey), v))
 	})
 }
 
-// OwnerIdIn applies the In predicate on the "ownerId" field.
-func OwnerIdIn(vs ...int) predicate.Organization {
+// PrivateKeyIn applies the In predicate on the "privateKey" field.
+func PrivateKeyIn(vs ...string) predicate.Organization {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -529,12 +529,12 @@ func OwnerIdIn(vs ...int) predicate.Organization {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.In(s.C(FieldOwnerId), v...))
+		s.Where(sql.In(s.C(FieldPrivateKey), v...))
 	})
 }
 
-// OwnerIdNotIn applies the NotIn predicate on the "ownerId" field.
-func OwnerIdNotIn(vs ...int) predicate.Organization {
+// PrivateKeyNotIn applies the NotIn predicate on the "privateKey" field.
+func PrivateKeyNotIn(vs ...string) predicate.Organization {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -546,7 +546,70 @@ func OwnerIdNotIn(vs ...int) predicate.Organization {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.NotIn(s.C(FieldOwnerId), v...))
+		s.Where(sql.NotIn(s.C(FieldPrivateKey), v...))
+	})
+}
+
+// PrivateKeyGT applies the GT predicate on the "privateKey" field.
+func PrivateKeyGT(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyGTE applies the GTE predicate on the "privateKey" field.
+func PrivateKeyGTE(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyLT applies the LT predicate on the "privateKey" field.
+func PrivateKeyLT(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyLTE applies the LTE predicate on the "privateKey" field.
+func PrivateKeyLTE(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyContains applies the Contains predicate on the "privateKey" field.
+func PrivateKeyContains(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyHasPrefix applies the HasPrefix predicate on the "privateKey" field.
+func PrivateKeyHasPrefix(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyHasSuffix applies the HasSuffix predicate on the "privateKey" field.
+func PrivateKeyHasSuffix(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyEqualFold applies the EqualFold predicate on the "privateKey" field.
+func PrivateKeyEqualFold(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldPrivateKey), v))
+	})
+}
+
+// PrivateKeyContainsFold applies the ContainsFold predicate on the "privateKey" field.
+func PrivateKeyContainsFold(v string) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldPrivateKey), v))
 	})
 }
 
@@ -597,34 +660,6 @@ func HasResourcesWith(preds ...predicate.Resource) predicate.Organization {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(ResourcesInverseTable, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, ResourcesTable, ResourcesColumn),
-		)
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasOwner applies the HasEdge predicate on the "owner" edge.
-func HasOwner() predicate.Organization {
-	return predicate.Organization(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(OwnerTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, OwnerTable, OwnerColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasOwnerWith applies the HasEdge predicate on the "owner" edge with a given conditions (other predicates).
-func HasOwnerWith(preds ...predicate.User) predicate.Organization {
-	return predicate.Organization(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(OwnerInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, OwnerTable, OwnerColumn),
 		)
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {

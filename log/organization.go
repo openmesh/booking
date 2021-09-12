@@ -33,6 +33,21 @@ func (mw organizationLoggingMiddleware) FindCurrentOrganization(ctx context.Cont
 	return
 }
 
+func (mw organizationLoggingMiddleware) FindOrganizationByPrivateKey(ctx context.Context, key string) (organization *booking.Organization, err error) {
+	defer func(begin time.Time) {
+		_ = mw.logger.Log(
+			"method", "find_organization_by_private_key",
+			"key", key,
+			"organization", organization,
+			"err", err,
+			"took", time.Since(begin),
+		)
+	}(time.Now())
+
+	organization, err = mw.OrganizationService.FindOrganizationByPrivateKey(ctx, key)
+	return
+}
+
 func (mw organizationLoggingMiddleware) CreateOrganization(ctx context.Context, organization *booking.Organization) (err error) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(

@@ -9,7 +9,6 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/openmesh/booking/ent/organization"
-	"github.com/openmesh/booking/ent/user"
 )
 
 // Organization is the model entity for the Organization schema.
@@ -25,8 +24,8 @@ type Organization struct {
 	Name string `json:"name,omitempty"`
 	// PublicKey holds the value of the "publicKey" field.
 	PublicKey string `json:"publicKey,omitempty"`
-	// OwnerId holds the value of the "ownerId" field.
-	OwnerId int `json:"ownerId,omitempty"`
+	// PrivateKey holds the value of the "privateKey" field.
+	PrivateKey string `json:"privateKey,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the OrganizationQuery when eager-loading is set.
 	Edges OrganizationEdges `json:"edges"`
@@ -38,11 +37,9 @@ type OrganizationEdges struct {
 	Users []*User `json:"users,omitempty"`
 	// Resources holds the value of the resources edge.
 	Resources []*Resource `json:"resources,omitempty"`
-	// Owner holds the value of the owner edge.
-	Owner *User `json:"owner,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [2]bool
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -63,28 +60,14 @@ func (e OrganizationEdges) ResourcesOrErr() ([]*Resource, error) {
 	return nil, &NotLoadedError{edge: "resources"}
 }
 
-// OwnerOrErr returns the Owner value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e OrganizationEdges) OwnerOrErr() (*User, error) {
-	if e.loadedTypes[2] {
-		if e.Owner == nil {
-			// The edge owner was loaded in eager-loading,
-			// but was not found.
-			return nil, &NotFoundError{label: user.Label}
-		}
-		return e.Owner, nil
-	}
-	return nil, &NotLoadedError{edge: "owner"}
-}
-
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Organization) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case organization.FieldID, organization.FieldOwnerId:
+		case organization.FieldID:
 			values[i] = new(sql.NullInt64)
-		case organization.FieldName, organization.FieldPublicKey:
+		case organization.FieldName, organization.FieldPublicKey, organization.FieldPrivateKey:
 			values[i] = new(sql.NullString)
 		case organization.FieldCreatedAt, organization.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -133,11 +116,11 @@ func (o *Organization) assignValues(columns []string, values []interface{}) erro
 			} else if value.Valid {
 				o.PublicKey = value.String
 			}
-		case organization.FieldOwnerId:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field ownerId", values[i])
+		case organization.FieldPrivateKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field privateKey", values[i])
 			} else if value.Valid {
-				o.OwnerId = int(value.Int64)
+				o.PrivateKey = value.String
 			}
 		}
 	}
@@ -152,11 +135,6 @@ func (o *Organization) QueryUsers() *UserQuery {
 // QueryResources queries the "resources" edge of the Organization entity.
 func (o *Organization) QueryResources() *ResourceQuery {
 	return (&OrganizationClient{config: o.config}).QueryResources(o)
-}
-
-// QueryOwner queries the "owner" edge of the Organization entity.
-func (o *Organization) QueryOwner() *UserQuery {
-	return (&OrganizationClient{config: o.config}).QueryOwner(o)
 }
 
 // Update returns a builder for updating this Organization.
@@ -190,8 +168,8 @@ func (o *Organization) String() string {
 	builder.WriteString(o.Name)
 	builder.WriteString(", publicKey=")
 	builder.WriteString(o.PublicKey)
-	builder.WriteString(", ownerId=")
-	builder.WriteString(fmt.Sprintf("%v", o.OwnerId))
+	builder.WriteString(", privateKey=")
+	builder.WriteString(o.PrivateKey)
 	builder.WriteByte(')')
 	return builder.String()
 }

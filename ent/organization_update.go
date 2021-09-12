@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -48,9 +47,9 @@ func (ou *OrganizationUpdate) SetPublicKey(s string) *OrganizationUpdate {
 	return ou
 }
 
-// SetOwnerId sets the "ownerId" field.
-func (ou *OrganizationUpdate) SetOwnerId(i int) *OrganizationUpdate {
-	ou.mutation.SetOwnerId(i)
+// SetPrivateKey sets the "privateKey" field.
+func (ou *OrganizationUpdate) SetPrivateKey(s string) *OrganizationUpdate {
+	ou.mutation.SetPrivateKey(s)
 	return ou
 }
 
@@ -82,17 +81,6 @@ func (ou *OrganizationUpdate) AddResources(r ...*Resource) *OrganizationUpdate {
 		ids[i] = r[i].ID
 	}
 	return ou.AddResourceIDs(ids...)
-}
-
-// SetOwnerID sets the "owner" edge to the User entity by ID.
-func (ou *OrganizationUpdate) SetOwnerID(id int) *OrganizationUpdate {
-	ou.mutation.SetOwnerID(id)
-	return ou
-}
-
-// SetOwner sets the "owner" edge to the User entity.
-func (ou *OrganizationUpdate) SetOwner(u *User) *OrganizationUpdate {
-	return ou.SetOwnerID(u.ID)
 }
 
 // Mutation returns the OrganizationMutation object of the builder.
@@ -142,12 +130,6 @@ func (ou *OrganizationUpdate) RemoveResources(r ...*Resource) *OrganizationUpdat
 	return ou.RemoveResourceIDs(ids...)
 }
 
-// ClearOwner clears the "owner" edge to the User entity.
-func (ou *OrganizationUpdate) ClearOwner() *OrganizationUpdate {
-	ou.mutation.ClearOwner()
-	return ou
-}
-
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (ou *OrganizationUpdate) Save(ctx context.Context) (int, error) {
 	var (
@@ -156,18 +138,12 @@ func (ou *OrganizationUpdate) Save(ctx context.Context) (int, error) {
 	)
 	ou.defaults()
 	if len(ou.hooks) == 0 {
-		if err = ou.check(); err != nil {
-			return 0, err
-		}
 		affected, err = ou.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*OrganizationMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = ou.check(); err != nil {
-				return 0, err
 			}
 			ou.mutation = mutation
 			affected, err = ou.sqlSave(ctx)
@@ -217,14 +193,6 @@ func (ou *OrganizationUpdate) defaults() {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (ou *OrganizationUpdate) check() error {
-	if _, ok := ou.mutation.OwnerID(); ou.mutation.OwnerCleared() && !ok {
-		return errors.New("ent: clearing a required unique edge \"owner\"")
-	}
-	return nil
-}
-
 func (ou *OrganizationUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -262,6 +230,13 @@ func (ou *OrganizationUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Type:   field.TypeString,
 			Value:  value,
 			Column: organization.FieldPublicKey,
+		})
+	}
+	if value, ok := ou.mutation.PrivateKey(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: organization.FieldPrivateKey,
 		})
 	}
 	if ou.mutation.UsersCleared() {
@@ -372,41 +347,6 @@ func (ou *OrganizationUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if ou.mutation.OwnerCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   organization.OwnerTable,
-			Columns: []string{organization.OwnerColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: user.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ou.mutation.OwnerIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   organization.OwnerTable,
-			Columns: []string{organization.OwnerColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: user.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	if n, err = sqlgraph.UpdateNodes(ctx, ou.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{organization.Label}
@@ -444,9 +384,9 @@ func (ouo *OrganizationUpdateOne) SetPublicKey(s string) *OrganizationUpdateOne 
 	return ouo
 }
 
-// SetOwnerId sets the "ownerId" field.
-func (ouo *OrganizationUpdateOne) SetOwnerId(i int) *OrganizationUpdateOne {
-	ouo.mutation.SetOwnerId(i)
+// SetPrivateKey sets the "privateKey" field.
+func (ouo *OrganizationUpdateOne) SetPrivateKey(s string) *OrganizationUpdateOne {
+	ouo.mutation.SetPrivateKey(s)
 	return ouo
 }
 
@@ -478,17 +418,6 @@ func (ouo *OrganizationUpdateOne) AddResources(r ...*Resource) *OrganizationUpda
 		ids[i] = r[i].ID
 	}
 	return ouo.AddResourceIDs(ids...)
-}
-
-// SetOwnerID sets the "owner" edge to the User entity by ID.
-func (ouo *OrganizationUpdateOne) SetOwnerID(id int) *OrganizationUpdateOne {
-	ouo.mutation.SetOwnerID(id)
-	return ouo
-}
-
-// SetOwner sets the "owner" edge to the User entity.
-func (ouo *OrganizationUpdateOne) SetOwner(u *User) *OrganizationUpdateOne {
-	return ouo.SetOwnerID(u.ID)
 }
 
 // Mutation returns the OrganizationMutation object of the builder.
@@ -538,12 +467,6 @@ func (ouo *OrganizationUpdateOne) RemoveResources(r ...*Resource) *OrganizationU
 	return ouo.RemoveResourceIDs(ids...)
 }
 
-// ClearOwner clears the "owner" edge to the User entity.
-func (ouo *OrganizationUpdateOne) ClearOwner() *OrganizationUpdateOne {
-	ouo.mutation.ClearOwner()
-	return ouo
-}
-
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
 func (ouo *OrganizationUpdateOne) Select(field string, fields ...string) *OrganizationUpdateOne {
@@ -559,18 +482,12 @@ func (ouo *OrganizationUpdateOne) Save(ctx context.Context) (*Organization, erro
 	)
 	ouo.defaults()
 	if len(ouo.hooks) == 0 {
-		if err = ouo.check(); err != nil {
-			return nil, err
-		}
 		node, err = ouo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*OrganizationMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = ouo.check(); err != nil {
-				return nil, err
 			}
 			ouo.mutation = mutation
 			node, err = ouo.sqlSave(ctx)
@@ -618,14 +535,6 @@ func (ouo *OrganizationUpdateOne) defaults() {
 		v := organization.UpdateDefaultUpdatedAt()
 		ouo.mutation.SetUpdatedAt(v)
 	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (ouo *OrganizationUpdateOne) check() error {
-	if _, ok := ouo.mutation.OwnerID(); ouo.mutation.OwnerCleared() && !ok {
-		return errors.New("ent: clearing a required unique edge \"owner\"")
-	}
-	return nil
 }
 
 func (ouo *OrganizationUpdateOne) sqlSave(ctx context.Context) (_node *Organization, err error) {
@@ -682,6 +591,13 @@ func (ouo *OrganizationUpdateOne) sqlSave(ctx context.Context) (_node *Organizat
 			Type:   field.TypeString,
 			Value:  value,
 			Column: organization.FieldPublicKey,
+		})
+	}
+	if value, ok := ouo.mutation.PrivateKey(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: organization.FieldPrivateKey,
 		})
 	}
 	if ouo.mutation.UsersCleared() {
@@ -784,41 +700,6 @@ func (ouo *OrganizationUpdateOne) sqlSave(ctx context.Context) (_node *Organizat
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: resource.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if ouo.mutation.OwnerCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   organization.OwnerTable,
-			Columns: []string{organization.OwnerColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: user.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ouo.mutation.OwnerIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   organization.OwnerTable,
-			Columns: []string{organization.OwnerColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: user.FieldID,
 				},
 			},
 		}

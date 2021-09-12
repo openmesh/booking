@@ -12,6 +12,7 @@ import (
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/organization"
+	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/slot"
 	"github.com/openmesh/booking/ent/unavailability"
@@ -33,6 +34,8 @@ type Client struct {
 	Booking *BookingClient
 	// Organization is the client for interacting with the Organization builders.
 	Organization *OrganizationClient
+	// OrganizationOwnership is the client for interacting with the OrganizationOwnership builders.
+	OrganizationOwnership *OrganizationOwnershipClient
 	// Resource is the client for interacting with the Resource builders.
 	Resource *ResourceClient
 	// Slot is the client for interacting with the Slot builders.
@@ -57,6 +60,7 @@ func (c *Client) init() {
 	c.Auth = NewAuthClient(c.config)
 	c.Booking = NewBookingClient(c.config)
 	c.Organization = NewOrganizationClient(c.config)
+	c.OrganizationOwnership = NewOrganizationOwnershipClient(c.config)
 	c.Resource = NewResourceClient(c.config)
 	c.Slot = NewSlotClient(c.config)
 	c.Unavailability = NewUnavailabilityClient(c.config)
@@ -92,15 +96,16 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:            ctx,
-		config:         cfg,
-		Auth:           NewAuthClient(cfg),
-		Booking:        NewBookingClient(cfg),
-		Organization:   NewOrganizationClient(cfg),
-		Resource:       NewResourceClient(cfg),
-		Slot:           NewSlotClient(cfg),
-		Unavailability: NewUnavailabilityClient(cfg),
-		User:           NewUserClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Auth:                  NewAuthClient(cfg),
+		Booking:               NewBookingClient(cfg),
+		Organization:          NewOrganizationClient(cfg),
+		OrganizationOwnership: NewOrganizationOwnershipClient(cfg),
+		Resource:              NewResourceClient(cfg),
+		Slot:                  NewSlotClient(cfg),
+		Unavailability:        NewUnavailabilityClient(cfg),
+		User:                  NewUserClient(cfg),
 	}, nil
 }
 
@@ -118,14 +123,15 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		config:         cfg,
-		Auth:           NewAuthClient(cfg),
-		Booking:        NewBookingClient(cfg),
-		Organization:   NewOrganizationClient(cfg),
-		Resource:       NewResourceClient(cfg),
-		Slot:           NewSlotClient(cfg),
-		Unavailability: NewUnavailabilityClient(cfg),
-		User:           NewUserClient(cfg),
+		config:                cfg,
+		Auth:                  NewAuthClient(cfg),
+		Booking:               NewBookingClient(cfg),
+		Organization:          NewOrganizationClient(cfg),
+		OrganizationOwnership: NewOrganizationOwnershipClient(cfg),
+		Resource:              NewResourceClient(cfg),
+		Slot:                  NewSlotClient(cfg),
+		Unavailability:        NewUnavailabilityClient(cfg),
+		User:                  NewUserClient(cfg),
 	}, nil
 }
 
@@ -158,6 +164,7 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Auth.Use(hooks...)
 	c.Booking.Use(hooks...)
 	c.Organization.Use(hooks...)
+	c.OrganizationOwnership.Use(hooks...)
 	c.Resource.Use(hooks...)
 	c.Slot.Use(hooks...)
 	c.Unavailability.Use(hooks...)
@@ -493,25 +500,131 @@ func (c *OrganizationClient) QueryResources(o *Organization) *ResourceQuery {
 	return query
 }
 
-// QueryOwner queries the owner edge of a Organization.
-func (c *OrganizationClient) QueryOwner(o *Organization) *UserQuery {
+// Hooks returns the client hooks.
+func (c *OrganizationClient) Hooks() []Hook {
+	return c.hooks.Organization
+}
+
+// OrganizationOwnershipClient is a client for the OrganizationOwnership schema.
+type OrganizationOwnershipClient struct {
+	config
+}
+
+// NewOrganizationOwnershipClient returns a client for the OrganizationOwnership from the given config.
+func NewOrganizationOwnershipClient(c config) *OrganizationOwnershipClient {
+	return &OrganizationOwnershipClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `organizationownership.Hooks(f(g(h())))`.
+func (c *OrganizationOwnershipClient) Use(hooks ...Hook) {
+	c.hooks.OrganizationOwnership = append(c.hooks.OrganizationOwnership, hooks...)
+}
+
+// Create returns a create builder for OrganizationOwnership.
+func (c *OrganizationOwnershipClient) Create() *OrganizationOwnershipCreate {
+	mutation := newOrganizationOwnershipMutation(c.config, OpCreate)
+	return &OrganizationOwnershipCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of OrganizationOwnership entities.
+func (c *OrganizationOwnershipClient) CreateBulk(builders ...*OrganizationOwnershipCreate) *OrganizationOwnershipCreateBulk {
+	return &OrganizationOwnershipCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for OrganizationOwnership.
+func (c *OrganizationOwnershipClient) Update() *OrganizationOwnershipUpdate {
+	mutation := newOrganizationOwnershipMutation(c.config, OpUpdate)
+	return &OrganizationOwnershipUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *OrganizationOwnershipClient) UpdateOne(oo *OrganizationOwnership) *OrganizationOwnershipUpdateOne {
+	mutation := newOrganizationOwnershipMutation(c.config, OpUpdateOne, withOrganizationOwnership(oo))
+	return &OrganizationOwnershipUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *OrganizationOwnershipClient) UpdateOneID(id int) *OrganizationOwnershipUpdateOne {
+	mutation := newOrganizationOwnershipMutation(c.config, OpUpdateOne, withOrganizationOwnershipID(id))
+	return &OrganizationOwnershipUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for OrganizationOwnership.
+func (c *OrganizationOwnershipClient) Delete() *OrganizationOwnershipDelete {
+	mutation := newOrganizationOwnershipMutation(c.config, OpDelete)
+	return &OrganizationOwnershipDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *OrganizationOwnershipClient) DeleteOne(oo *OrganizationOwnership) *OrganizationOwnershipDeleteOne {
+	return c.DeleteOneID(oo.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *OrganizationOwnershipClient) DeleteOneID(id int) *OrganizationOwnershipDeleteOne {
+	builder := c.Delete().Where(organizationownership.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &OrganizationOwnershipDeleteOne{builder}
+}
+
+// Query returns a query builder for OrganizationOwnership.
+func (c *OrganizationOwnershipClient) Query() *OrganizationOwnershipQuery {
+	return &OrganizationOwnershipQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a OrganizationOwnership entity by its id.
+func (c *OrganizationOwnershipClient) Get(ctx context.Context, id int) (*OrganizationOwnership, error) {
+	return c.Query().Where(organizationownership.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *OrganizationOwnershipClient) GetX(ctx context.Context, id int) *OrganizationOwnership {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a OrganizationOwnership.
+func (c *OrganizationOwnershipClient) QueryUser(oo *OrganizationOwnership) *UserQuery {
 	query := &UserQuery{config: c.config}
 	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
-		id := o.ID
+		id := oo.ID
 		step := sqlgraph.NewStep(
-			sqlgraph.From(organization.Table, organization.FieldID, id),
+			sqlgraph.From(organizationownership.Table, organizationownership.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, organization.OwnerTable, organization.OwnerColumn),
+			sqlgraph.Edge(sqlgraph.M2O, false, organizationownership.UserTable, organizationownership.UserColumn),
 		)
-		fromV = sqlgraph.Neighbors(o.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(oo.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryOrganization queries the organization edge of a OrganizationOwnership.
+func (c *OrganizationOwnershipClient) QueryOrganization(oo *OrganizationOwnership) *OrganizationQuery {
+	query := &OrganizationQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := oo.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organizationownership.Table, organizationownership.FieldID, id),
+			sqlgraph.To(organization.Table, organization.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, organizationownership.OrganizationTable, organizationownership.OrganizationColumn),
+		)
+		fromV = sqlgraph.Neighbors(oo.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // Hooks returns the client hooks.
-func (c *OrganizationClient) Hooks() []Hook {
-	return c.hooks.Organization
+func (c *OrganizationOwnershipClient) Hooks() []Hook {
+	return c.hooks.OrganizationOwnership
 }
 
 // ResourceClient is a client for the Resource schema.

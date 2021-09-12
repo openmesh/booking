@@ -4,19 +4,18 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/signal"
-	"os/user"
-	"path/filepath"
-	"strings"
-
 	"github.com/go-kit/kit/log"
 	"github.com/openmesh/booking"
 	"github.com/openmesh/booking/ent"
 	"github.com/openmesh/booking/ent/migrate"
 	"github.com/openmesh/booking/http"
 	"github.com/pelletier/go-toml"
+	"io/ioutil"
+	"os"
+	"os/signal"
+	"os/user"
+	"path/filepath"
+	"strings"
 
 	logging "github.com/openmesh/booking/log"
 )
@@ -188,12 +187,20 @@ func (m *Main) Run(ctx context.Context) (err error) {
 
 	// Instantiate ent-backed services.
 	// authService := ent.NewAuthService(m.Client)
-	resourceService := ent.NewResourceService(m.Client)
+	var resourceService booking.ResourceService
+	{
+		resourceService = ent.NewResourceService(m.Client)
+		resourceService = logging.ResourceLoggingMiddleware(logger)(resourceService)
+	}
 	var organizationService booking.OrganizationService
 	{
 		organizationService = ent.NewOrganizationService(m.Client)
 		organizationService = logging.OrganizationLoggingMiddleware(logger)(organizationService)
 	}
+
+	handler := ent.NewHandler(m.Client)
+
+	m.HTTPServer.Handler = handler
 	// userService := sqlite.NewUserService(m.DB)
 
 	// Attach user service to Main for testing.
@@ -217,6 +224,9 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	// m.HTTPServer.EventService = eventService
 	// m.HTTPServer.UserService = userService
 
+	// Register routes that require services to be initialized.
+	m.HTTPServer.RegisterRoutes()
+
 	// Start the HTTP server.
 	if err := m.HTTPServer.Open(); err != nil {
 		return err
@@ -232,7 +242,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	// Enable internal debug endpoints.
 	go func() { http.ListenAndServeDebug() }()
 
-	logger.Log("running: url=%q debug=http://localhost:6060 dsn=%q", m.HTTPServer.URL(), m.Config.DB.DSN)
+	logger.Log("status", "running", "url", m.HTTPServer.URL(), "debug", "http://localhost:6060", "dsn", m.Config.DB.DSN)
 
 	return nil
 }
@@ -318,6 +328,20 @@ func expandDSN(dsn string) (string, error) {
 		return dsn, nil
 	}
 	return expand(dsn)
+}
+
+func seedData(ctx context.Context, s booking.OrganizationService) {
+	organization := booking.Organization{
+		Name: "Default",
+		Owner: &booking.User{
+			Name:  "Admin",
+			Email: "admin@local",
+		},
+	}
+	err := s.CreateOrganization(ctx, &organization)
+	if err != nil {
+		os.Exit(1)
+	}
 }
 
 // // rollbarReportError reports internal errors to rollbar.

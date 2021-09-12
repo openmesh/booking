@@ -19,14 +19,12 @@ const (
 	FieldName = "name"
 	// FieldPublicKey holds the string denoting the publickey field in the database.
 	FieldPublicKey = "public_key"
-	// FieldOwnerId holds the string denoting the ownerid field in the database.
-	FieldOwnerId = "owner_id"
+	// FieldPrivateKey holds the string denoting the privatekey field in the database.
+	FieldPrivateKey = "private_key"
 	// EdgeUsers holds the string denoting the users edge name in mutations.
 	EdgeUsers = "users"
 	// EdgeResources holds the string denoting the resources edge name in mutations.
 	EdgeResources = "resources"
-	// EdgeOwner holds the string denoting the owner edge name in mutations.
-	EdgeOwner = "owner"
 	// Table holds the table name of the organization in the database.
 	Table = "organizations"
 	// UsersTable is the table that holds the users relation/edge.
@@ -43,13 +41,6 @@ const (
 	ResourcesInverseTable = "resources"
 	// ResourcesColumn is the table column denoting the resources relation/edge.
 	ResourcesColumn = "organization_id"
-	// OwnerTable is the table that holds the owner relation/edge.
-	OwnerTable = "organizations"
-	// OwnerInverseTable is the table name for the User entity.
-	// It exists in this package in order to avoid circular dependency with the "user" package.
-	OwnerInverseTable = "users"
-	// OwnerColumn is the table column denoting the owner relation/edge.
-	OwnerColumn = "owner_id"
 )
 
 // Columns holds all SQL columns for organization fields.
@@ -59,7 +50,7 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldName,
 	FieldPublicKey,
-	FieldOwnerId,
+	FieldPrivateKey,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

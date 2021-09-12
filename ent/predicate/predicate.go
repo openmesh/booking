@@ -15,6 +15,9 @@ type Booking func(*sql.Selector)
 // Organization is the predicate function for organization builders.
 type Organization func(*sql.Selector)
 
+// OrganizationOwnership is the predicate function for organizationownership builders.
+type OrganizationOwnership func(*sql.Selector)
+
 // Resource is the predicate function for resource builders.
 type Resource func(*sql.Selector)
 

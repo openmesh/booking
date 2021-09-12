@@ -62,9 +62,9 @@ func (oc *OrganizationCreate) SetPublicKey(s string) *OrganizationCreate {
 	return oc
 }
 
-// SetOwnerId sets the "ownerId" field.
-func (oc *OrganizationCreate) SetOwnerId(i int) *OrganizationCreate {
-	oc.mutation.SetOwnerId(i)
+// SetPrivateKey sets the "privateKey" field.
+func (oc *OrganizationCreate) SetPrivateKey(s string) *OrganizationCreate {
+	oc.mutation.SetPrivateKey(s)
 	return oc
 }
 
@@ -96,17 +96,6 @@ func (oc *OrganizationCreate) AddResources(r ...*Resource) *OrganizationCreate {
 		ids[i] = r[i].ID
 	}
 	return oc.AddResourceIDs(ids...)
-}
-
-// SetOwnerID sets the "owner" edge to the User entity by ID.
-func (oc *OrganizationCreate) SetOwnerID(id int) *OrganizationCreate {
-	oc.mutation.SetOwnerID(id)
-	return oc
-}
-
-// SetOwner sets the "owner" edge to the User entity.
-func (oc *OrganizationCreate) SetOwner(u *User) *OrganizationCreate {
-	return oc.SetOwnerID(u.ID)
 }
 
 // Mutation returns the OrganizationMutation object of the builder.
@@ -204,11 +193,8 @@ func (oc *OrganizationCreate) check() error {
 	if _, ok := oc.mutation.PublicKey(); !ok {
 		return &ValidationError{Name: "publicKey", err: errors.New(`ent: missing required field "publicKey"`)}
 	}
-	if _, ok := oc.mutation.OwnerId(); !ok {
-		return &ValidationError{Name: "ownerId", err: errors.New(`ent: missing required field "ownerId"`)}
-	}
-	if _, ok := oc.mutation.OwnerID(); !ok {
-		return &ValidationError{Name: "owner", err: errors.New("ent: missing required edge \"owner\"")}
+	if _, ok := oc.mutation.PrivateKey(); !ok {
+		return &ValidationError{Name: "privateKey", err: errors.New(`ent: missing required field "privateKey"`)}
 	}
 	return nil
 }
@@ -269,6 +255,14 @@ func (oc *OrganizationCreate) createSpec() (*Organization, *sqlgraph.CreateSpec)
 		})
 		_node.PublicKey = value
 	}
+	if value, ok := oc.mutation.PrivateKey(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: organization.FieldPrivateKey,
+		})
+		_node.PrivateKey = value
+	}
 	if nodes := oc.mutation.UsersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -305,26 +299,6 @@ func (oc *OrganizationCreate) createSpec() (*Organization, *sqlgraph.CreateSpec)
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := oc.mutation.OwnerIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   organization.OwnerTable,
-			Columns: []string{organization.OwnerColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: user.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.OwnerId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

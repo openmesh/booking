@@ -48,7 +48,7 @@ func (mw resourceLoggingMiddleware) FindResources(ctx context.Context, filter bo
 	return
 }
 
-func (mw resourceLoggingMiddleware) CreateResource(ctx context.Context, resource *booking.Resource) (err error) {
+func (mw resourceLoggingMiddleware) CreateResource(ctx context.Context, resource *booking.Resource) (result *booking.Resource, err error) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "create_resource",
@@ -57,7 +57,7 @@ func (mw resourceLoggingMiddleware) CreateResource(ctx context.Context, resource
 		)
 	}(time.Now())
 
-	err = mw.ResourceService.CreateResource(ctx, resource)
+	resource, err = mw.ResourceService.CreateResource(ctx, resource)
 	return
 }
 

@@ -9,6 +9,7 @@ import (
 // Authentication providers. Currently we only support GitHub but any OAuth
 // provider could be supported.
 const (
+	// AuthSourceGitHub is the key used to represent the GitHub authentication source.
 	AuthSourceGitHub = "github"
 )
 
@@ -71,23 +72,23 @@ func (a *Auth) AvatarURL(size int) string {
 
 // AuthService represents a service for managing auths.
 type AuthService interface {
-	// Looks up an authentication object by ID along with the associated user.
+	// FindAuthByID looks up an authentication object by ID along with the associated user.
 	// Returns ENOTFOUND if ID does not exist.
 	FindAuthByID(ctx context.Context, id int) (*Auth, error)
 
-	// Retrieves authentication objects based on a filter. Also returns the total
+	// FindAuths retrieves authentication objects based on a filter. Also returns the total
 	// number of objects that match the filter. This may differ from the returned
 	// object count if the Limit field is set.
 	FindAuths(ctx context.Context, filter AuthFilter) ([]*Auth, int, error)
 
-	// Creates a new authentication object If a User is attached to auth, then the
+	// CreateAuth creates a new authentication object If a User is attached to auth, then the
 	// auth object is linked to an existing user. Otherwise a new user object is
 	// created.
 	//
-	// On success, the auth.ID is set to the new authentication ID.
-	CreateAuth(ctx context.Context, auth *Auth) error
+	// Returns the created Auth.
+	CreateAuth(ctx context.Context, auth *Auth) (*Auth, error)
 
-	// Permanently deletes an authentication object from the system by ID. The
+	// DeleteAuth permanently deletes an authentication object from the system by ID. The
 	// parent user object is not removed.
 	DeleteAuth(ctx context.Context, id int) error
 }

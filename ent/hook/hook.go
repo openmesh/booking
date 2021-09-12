@@ -48,6 +48,19 @@ func (f OrganizationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return f(ctx, mv)
 }
 
+// The OrganizationOwnershipFunc type is an adapter to allow the use of ordinary
+// function as OrganizationOwnership mutator.
+type OrganizationOwnershipFunc func(context.Context, *ent.OrganizationOwnershipMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OrganizationOwnershipFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	mv, ok := m.(*ent.OrganizationOwnershipMutation)
+	if !ok {
+		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OrganizationOwnershipMutation", m)
+	}
+	return f(ctx, mv)
+}
+
 // The ResourceFunc type is an adapter to allow the use of ordinary
 // function as Resource mutator.
 type ResourceFunc func(context.Context, *ent.ResourceMutation) (ent.Value, error)

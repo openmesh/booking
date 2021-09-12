@@ -59,7 +59,7 @@ type Slot struct {
 }
 
 // ResourceService represents a service for managing resources.
-type ResourceService interface {
+type ResourceRequestHandler interface {
 	// FindResourceByID retrieves a single resource by ID along with associated availabilities.
 	// Returns ENOTFOUND if resource does not exist or user does not have
 	// permission to view it.
@@ -72,7 +72,8 @@ type ResourceService interface {
 	FindResources(ctx context.Context, filter ResourceFilter) ([]*Resource, int, error)
 
 	// CreateResource creates a new resource and assigns the current user as the owner.
-	CreateResource(ctx context.Context, resource *Resource) error
+	// Returns the created Resource
+	CreateResource(ctx context.Context, resource *Resource) (*Resource, error)
 
 	// UpdateResource updates an existing resource by ID. Only the resource owner can update a
 	// resource. Returns the new resource state even if there was an error during
@@ -88,19 +89,32 @@ type ResourceService interface {
 	DeleteResource(ctx context.Context, id int) error
 }
 
-// ResourceFilter represents a filter used by FindResources()
-type ResourceFilter struct {
-	// Filtering fields.
-	ID          *int    `json:"id"`
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
+// FindResourceByIDQuery represents a query used by ResourceService.FindResourceByID.
+type FindResourceByIDQuery struct {
+	ID int `json:"id"`
+}
 
-	// Restrict to subset of range.
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
+// FindResourceByIDQueryHandler represents a handler for FindResourceByIDQuery requests.
+type FindResourceByIDQueryHandler interface {
+	// Handle retrieves a single resource by ID along with associated availabilities.
+	// Returns ENOTFOUND if resource does not exist or user does not have
+	// permission to view it.
+	Handle(ctx context.Context, query FindResourceByIDQuery) (*Resource, error)
+}
 
-	// Booking property to order by.
-	OrderBy string `json:"orderBy"`
+// CreateResourceCommand represents a command used by ResourceService.CreateResource.
+type CreateResourceCommand struct {
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Slots        []*Slot `json:"slots"`
+	Timezone     string  `json:"timezone"`
+	Password     string  `json:"password"`
+	Price        int     `json:"price"`
+	BookingPrice int     `json:"bookingPrice"`
+}
+
+type CreateResourceCommandHandler interface {
+	Handle(ctx context.Context, command CreateResourceCommand) (*Resource, error)
 }
 
 // ResourceUpdate represents a set of fields to update on a resource via UpdateResource().
@@ -113,6 +127,23 @@ type ResourceUpdate struct {
 	BookingPrice int     `json:"bookingPrice"`
 	Slots        []*Slot `json:"slots"`
 }
+
+// ResourceFilter represents a filter used by FindResources()
+type ResourceFilter struct {
+	// Filtering fields.
+	ID          *int    `json:"id"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+
+	// Restrict to subset of range.
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+
+	// Booking property to order by.
+	OrderBy *string `json:"orderBy"`
+}
+
+
 
 // ResourceServiceMiddleware defines a middleware for a resource service.
 type ResourceServiceMiddleware func(ResourceService) ResourceService

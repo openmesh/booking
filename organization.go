@@ -31,13 +31,17 @@ type Organization struct {
 
 // OrganizationService represents a service for managing organizations.
 type OrganizationService interface {
-	// Retrieves the organization of the currently authenticated user.
+	// FindCurrentOrganization retrieves the organization of the currently authenticated user.
 	FindCurrentOrganization(ctx context.Context) (*Organization, error)
 
-	// Creates a new organization.
+	// FindOrganizationByPrivateKey retrieves an organization by PrivateKey. Returns ENOTFOUND if
+	// organization does not exist.
+	FindOrganizationByPrivateKey(ctx context.Context, key string) (*Organization, error)
+
+	// CreateOrganization creates a new organization.
 	CreateOrganization(ctx context.Context, organization *Organization) error
 
-	// Updates the organization associated with the currently authenicated user.
+	// UpdateOrganization updates the organization associated with the currently authenicated user.
 	UpdateOrganization(ctx context.Context, upd OrganizationUpdate) (*Organization, error)
 }
 

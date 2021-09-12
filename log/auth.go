@@ -50,7 +50,7 @@ func (mw authLoggingMiddleware) FindAuths(ctx context.Context, filter booking.Au
 	return
 }
 
-func (mw authLoggingMiddleware) CreateAuth(ctx context.Context, auth *booking.Auth) (err error) {
+func (mw authLoggingMiddleware) CreateAuth(ctx context.Context, auth *booking.Auth) (result *booking.Auth, err error) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "create_auth",
@@ -60,7 +60,7 @@ func (mw authLoggingMiddleware) CreateAuth(ctx context.Context, auth *booking.Au
 		)
 	}(time.Now())
 
-	err = mw.AuthService.CreateAuth(ctx, auth)
+	result, err = mw.AuthService.CreateAuth(ctx, auth)
 	return
 }
 

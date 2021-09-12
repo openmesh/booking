@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Server) registerOrganizationRoutes(r *mux.Router) {
-	e := endpoint.MakeOrganizationServerEndpoints(s.OrganizationService)
+	e := endpoint.MakeOrganizationEndpoints(s.OrganizationService)
 
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorHandler(transport.NewLogErrorHandler(s.logger)),

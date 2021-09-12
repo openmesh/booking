@@ -126,7 +126,7 @@ func (s *Server) handleOAuthGitHubCallback(w http.ResponseWriter, r *http.Reques
 	// Create the "Auth" object in the database. The AuthService will lookup
 	// the user by email if they already exist. Otherwise, a new user will be
 	// created and the user's ID will be set to auth.UserID.
-	if err := s.AuthService.CreateAuth(r.Context(), auth); err != nil {
+	if _, err := s.AuthService.CreateAuth(r.Context(), auth); err != nil {
 		Error(w, r, fmt.Errorf("cannot create auth: %s", err))
 		return
 	}

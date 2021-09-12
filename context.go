@@ -13,6 +13,9 @@ const (
 	// Stores the current logged in user in the context.
 	userContextKey = contextKey(iota + 1)
 
+	// Stores the current organization in the context.
+	organizationContextKey
+
 	// Stores the "flash" in the context. This is a term used in web development
 	// for a message that is passed from one request to the next for informational
 	// purposes. This could be moved into the "http" package as it is only HTTP
@@ -24,6 +27,11 @@ const (
 // NewContextWithUser returns a new context with the given user.
 func NewContextWithUser(ctx context.Context, user *User) context.Context {
 	return context.WithValue(ctx, userContextKey, user)
+}
+
+// NewContextWithOrganization returns a new context with the given organization.
+func NewContextWithOrganization(ctx context.Context, organization *Organization) context.Context {
+	return context.WithValue(ctx, organizationContextKey, organization)
 }
 
 // UserFromContext returns the current logged in user.
@@ -41,11 +49,17 @@ func UserIDFromContext(ctx context.Context) int {
 	return 0
 }
 
+// OrganizationFromContext returns the current organization.
+func OrganizationFromContext(ctx context.Context) *Organization {
+	org, _ := ctx.Value(organizationContextKey).(*Organization)
+	return org
+}
+
 // OrganizationIDFromContext is helper function that returns the OrganizationID
 // of the current user. Returns 0 if no user is authenticated.
 func OrganizationIDFromContext(ctx context.Context) int {
-	if user := UserFromContext(ctx); user != nil {
-		return user.OrganizationID
+	if org := OrganizationFromContext(ctx); org != nil {
+		return org.ID
 	}
 	return 0
 }
