@@ -2,27 +2,11 @@ package ent
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/openmesh/booking"
+	"github.com/openmesh/booking/ent/resource"
 )
-
-type handler struct {
-	client *Client
-}
-
-func NewHandler(client *Client) *handler {
-	return &handler{
-		client,
-	}
-}
-
-func (h *handler) Handle(ctx context.Context, query booking.FindResourceByIDQuery) (*booking.Resource, error) {
-	r, err := h.client.Resource.Get(ctx, query.ID)
-	if err != nil {
-		return nil, err
-	}
-	return r.toModel(), nil
-}
 
 type resourceService struct {
 	client *Client
@@ -34,63 +18,105 @@ func NewResourceService(client *Client) *resourceService {
 	}
 }
 
-func (s *resourceService) FindResourceByID(ctx context.Context, id int) (*booking.Resource, error) {
-	r, err := s.client.Resource.Get(ctx, id)
+func (s *resourceService) FindResourceByID(ctx context.Context, req booking.FindResourceByIDRequest) (*booking.Resource, error) {
+	r, err := s.client.Resource.
+		Query().
+		Where(resource.ID(req.ID)).
+		WithSlots().
+		First(ctx) // Get(ctx, req.ID)
+	if _, ok := err.(*NotFoundError); ok {
+		return nil, booking.Error{
+			Code:   booking.ENOTFOUND,
+			Detail: fmt.Sprintf("'Resource' with ID '%d' could not be found", req.ID),
+			Title:  "Resource not found",
+			Params: nil,
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
 	return r.toModel(), nil
 }
 
-func (s *resourceService) FindResources(ctx context.Context, filter booking.ResourceFilter) ([]*booking.Resource, int, error) {
-	return []*booking.Resource{}, 0, nil
+func (s *resourceService) FindResources(ctx context.Context, req booking.FindResourcesRequest) ([]*booking.Resource, int, error) {
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	query := tx.Resource.Query().
+		Where(resource.OrganizationId(booking.OrganizationIDFromContext(ctx)))
+	if req.ID != nil {
+		query = query.Where(resource.ID(*req.ID))
+	}
+	if req.Name != nil {
+		query = query.Where(resource.Name(*req.Name))
+	}
+	if req.Description != nil {
+		query = query.Where(resource.Description(*req.Description))
+	}
+	totalItems, err := query.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	query.Offset(req.Offset)
+	if req.Limit == 0 {
+		query.Limit(10)
+	} else {
+		query.Limit(req.Limit)
+	}
+	resources, err := query.WithSlots().All(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return Resources(resources).toModels(), totalItems, nil
 }
 
-func (s *resourceService) CreateResource(ctx context.Context, resource *booking.Resource) (*booking.Resource, error) {
+func (s *resourceService) CreateResource(ctx context.Context, req booking.CreateResourceRequest) (*booking.Resource, error) {
 	organizationID := booking.OrganizationIDFromContext(ctx)
 	if organizationID == 0 {
-		return nil,booking.Errorf(booking.EUNAUTHORIZED, "Failed to create resource: No user authenticated")
+		return nil, booking.Errorf(booking.EUNAUTHORIZED, "Failed to create resource: No user authenticated")
 	}
 
 	entity, err := s.client.Resource.Create().
-		SetBookingPrice(resource.BookingPrice).
-		SetDescription(resource.Description).
-		SetName(resource.Name).
+		SetBookingPrice(req.BookingPrice).
+		SetDescription(req.Description).
+		SetName(req.Name).
 		SetOrganizationID(organizationID).
-		SetPassword(resource.Password).
-		SetPrice(resource.Price).
-		SetTimezone(resource.Timezone).
+		SetPassword(req.Password).
+		SetPrice(req.Price).
+		SetTimezone(req.Timezone).
 		Save(ctx)
 
 	if err != nil {
 		return nil, err
 	}
 
-	resource = entity.toModel()
+	res := entity.toModel()
 
-	return resource, nil
+	return res, nil
 }
 
-func (s *resourceService) UpdateResource(ctx context.Context, id int, upd booking.ResourceUpdate) (*booking.Resource, error) {
-	resource, err := s.client.Resource.
-		UpdateOneID(id).
-		SetName(upd.Name).
-		SetDescription(upd.Description).
-		SetTimezone(upd.Timezone).
-		SetPassword(upd.Password).
-		SetPrice(upd.Price).
-		SetBookingPrice(upd.BookingPrice).
+func (s *resourceService) UpdateResource(ctx context.Context, req booking.UpdateResourceRequest) (*booking.Resource, error) {
+	res, err := s.client.Resource.
+		UpdateOneID(req.ID).
+		SetName(req.Name).
+		SetDescription(req.Description).
+		SetTimezone(req.Timezone).
+		SetPassword(req.Password).
+		SetPrice(req.Price).
+		SetBookingPrice(req.BookingPrice).
 		Save(ctx)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return resource.toModel(), nil
+	return res.toModel(), nil
 }
 
-func (s *resourceService) DeleteResource(ctx context.Context, id int) error {
-	return s.client.Resource.DeleteOneID(id).Exec(ctx)
+func (s *resourceService) DeleteResource(ctx context.Context, req booking.DeleteResourceRequest) error {
+	return s.client.Resource.DeleteOneID(req.ID).Exec(ctx)
 }
 
 func (r *Resource) toModel() *booking.Resource {
@@ -112,9 +138,12 @@ func (r *Resource) toModel() *booking.Resource {
 	}
 
 	if r.Edges.Slots != nil {
+		result.Slots = make([]*booking.Slot, 0)
 		for _, s := range r.Edges.Slots {
 			result.Slots = append(result.Slots, s.toModel())
 		}
+	} else {
+		result.Slots = make([]*booking.Slot, 0)
 	}
 
 	return result
@@ -127,4 +156,12 @@ func (s *Slot) toModel() *booking.Slot {
 		EndTime:   s.EndTime,
 		Quantity:  s.Quantity,
 	}
+}
+
+func (r Resources) toModels() []*booking.Resource {
+	var resources []*booking.Resource
+	for _, v := range r {
+		resources = append(resources, v.toModel())
+	}
+	return resources
 }

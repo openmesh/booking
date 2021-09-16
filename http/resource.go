@@ -3,9 +3,10 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"github.com/openmesh/booking"
 	"net/http"
 	"strconv"
+
+	"github.com/openmesh/booking"
 
 	"github.com/go-kit/kit/transport"
 	httptransport "github.com/go-kit/kit/transport/http"
@@ -22,7 +23,7 @@ func (s *Server) registerResourceRoutes(r *mux.Router) {
 	}
 
 	r.Methods("GET").Path("/resources/{id}").Handler(httptransport.NewServer(
-		endpoint.MakeFindResourceByIDEndpoint(s.Handler),
+		e.FindResourceByIDEndpoint,
 		decodeFindResourceByIDRequest,
 		encodeResponse,
 		options...,
@@ -57,79 +58,108 @@ func (s *Server) registerResourceRoutes(r *mux.Router) {
 	))
 }
 
-func decodeFindResourceByIDRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+func decodeFindResourceByIDRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
 	if !ok {
 		return nil, ErrBadRouting
 	}
-
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		return nil, err
+		return nil, booking.Error{
+			Code:   booking.EINVALID,
+			Detail: "One or more validation errors occurred while processing your request.",
+			Title:  "Invalid request",
+			Params: []booking.ErrorParam{
+				{
+					Name:   "ID",
+					Reason: "Must be a valid integer",
+				},
+			},
+		}
 	}
 
-	return booking.FindResourceByIDQuery{ID: id}, nil
+	return booking.FindResourceByIDRequest{ID: id}, nil
 }
 
-func decodeFindResourcesRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	req := endpoint.FindResourcesRequest{}
+func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	req := booking.FindResourcesRequest{}
+
+	var errorParams []booking.ErrorParam
 
 	idStr := r.URL.Query().Get("id")
 	if idStr != "" {
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			return nil, err
+			errorParams = append(errorParams, booking.ErrorParam{
+				Name:   "ID",
+				Reason: "Must be a valid integer",
+			})
 		}
-		req.Filter.ID = &id
+		req.ID = &id
 	}
 
 	name := r.URL.Query().Get("name")
 	if name != "" {
-		req.Filter.Name = &name
+		req.Name = &name
 	}
 
 	description := r.URL.Query().Get("description")
 	if description != "" {
-		req.Filter.Description = &description
+		req.Description = &description
 	}
 
 	offsetStr := r.URL.Query().Get("offset")
 	if offsetStr != "" {
 		offset, err := strconv.Atoi(offsetStr)
 		if err != nil {
-			return nil, err
+			errorParams = append(errorParams, booking.ErrorParam{
+				Name:   "Offset",
+				Reason: "Must be a valid integer",
+			})
 		}
-		req.Filter.Offset = offset
+		req.Offset = offset
 	}
 
 	limitStr := r.URL.Query().Get("limit")
 	if limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil {
-			return nil, err
+			errorParams = append(errorParams, booking.ErrorParam{
+				Name:   "Offset",
+				Reason: "Must be a valid integer",
+			})
 		}
-		req.Filter.Limit = limit
+		req.Limit = limit
 	}
 
 	orderBy := r.URL.Query().Get("orderBy")
 	if orderBy != "" {
-		req.Filter.OrderBy = &orderBy
+		req.OrderBy = &orderBy
+	}
+
+	if len(errorParams) > 0 {
+		return nil, booking.Error{
+			Code:   booking.EINVALID,
+			Detail: "One or more validation errors occurred while processing your request.",
+			Title:  "Invalid request",
+			Params: errorParams,
+		}
 	}
 
 	return req, nil
 }
 
-func decodeCreateResourceRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	var req endpoint.CreateResourceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req.Resource); err != nil {
+func decodeCreateResourceRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var req booking.CreateResourceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, err
 	}
 	return req, nil
 }
 
-func decodeUpdateResourceRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	var req endpoint.UpdateResourceRequest
+func decodeUpdateResourceRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var req booking.UpdateResourceRequest
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
 	if !ok {
@@ -140,13 +170,13 @@ func decodeUpdateResourceRequest(ctx context.Context, r *http.Request) (interfac
 		return nil, err
 	}
 	req.ID = id
-	if err := json.NewDecoder(r.Body).Decode(&req.Update); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, err
 	}
 	return req, nil
 }
 
-func decodeDeleteResourceRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+func decodeDeleteResourceRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
 	if !ok {
@@ -156,5 +186,5 @@ func decodeDeleteResourceRequest(ctx context.Context, r *http.Request) (interfac
 	if err != nil {
 		return nil, err
 	}
-	return endpoint.DeleteResourceRequest{ID: id}, nil
+	return booking.DeleteResourceRequest{ID: id}, nil
 }

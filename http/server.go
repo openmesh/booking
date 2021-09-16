@@ -55,8 +55,6 @@ type Server struct {
 	ResourceService       booking.ResourceService
 	UnavailabilityService booking.UnavailabilityService
 	UserService           booking.UserService
-
-	Handler booking.Handler
 }
 
 // NewServer returns a new instance of Server.
@@ -127,6 +125,10 @@ func (s *Server) RegisterRoutes() {
 		// s.registerDialMembershipRoutes(r)
 		// s.registerEventRoutes(r)
 	}
+}
+
+func (s *Server) AttachLogger(logger log.Logger) {
+	s.logger = logger
 }
 
 // UseTLS returns true if the cert & key file are specified.

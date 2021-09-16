@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
@@ -78,25 +77,11 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 	// Log & report internal errors.
 	if code == booking.EINTERNAL {
 		booking.ReportError(r.Context(), err, r)
-		LogError(r, err)
 	}
 
-	// Print user message to response based on reqeust accept header.
-	// switch r.Header.Get("Accept") {
-	// case "application/json":
 	w.Header().Set("Content-type", "application/json")
 	w.WriteHeader(ErrorStatusCode(code))
 	json.NewEncoder(w).Encode(&ErrorResponse{Error: message})
-
-	// default:
-	// 	w.WriteHeader(ErrorStatusCode(code))
-	// 	tmpl := html.ErrorTemplate{
-	// 		StatusCode: ErrorStatusCode(code),
-	// 		Header:     "An error has occurred.",
-	// 		Message:    message,
-	// 	}
-	// 	tmpl.Render(r.Context(), w)
-	// }
 }
 
 // ErrorResponse represents a JSON structure for error output.
@@ -108,7 +93,7 @@ type ErrorResponse struct {
 func parseResponseError(resp *http.Response) error {
 	defer resp.Body.Close()
 
-	// Read the response body so we can reuse it for the error message if it
+	// Read the response body, so we can reuse it for the error message if it
 	// fails to decode as JSON.
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -126,11 +111,6 @@ func parseResponseError(resp *http.Response) error {
 		return booking.Errorf(FromErrorStatusCode(resp.StatusCode), message)
 	}
 	return booking.Errorf(FromErrorStatusCode(resp.StatusCode), errorResponse.Error)
-}
-
-// LogError logs an error with the HTTP route information.
-func LogError(r *http.Request, err error) {
-	log.Printf("[http] error: %s %s: %s", r.Method, r.URL.Path, err)
 }
 
 // lookup of application error codes to HTTP status codes.
@@ -161,23 +141,15 @@ func FromErrorStatusCode(code int) string {
 	return booking.EINTERNAL
 }
 
-// errorer is implemented by all concrete response types that may contain
-// errors. It allows us to change the HTTP response code without needing to
-// trigger an endpoint (transport-level) error. For more information, read the
-// big comment in endpoints.go.
-type errorer interface {
-	error() error
-}
-
 // encodeResponse is the common method to encode all response types to the
 // client. I chose to do it this way because, since we're using JSON, there's no
 // reason to provide anything more specific. It's certainly possible to
 // specialize on a per-response (per-method) basis.
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	if e, ok := response.(errorer); ok && e.error() != nil {
+	if e, ok := response.(booking.Errorer); ok && e.Error() != nil {
 		// Not a Go kit transport error, but a business-logic error.
 		// Provide those as HTTP errors.
-		encodeError(ctx, e.error(), w)
+		encodeError(ctx, e.Error(), w)
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -188,11 +160,15 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	if err == nil {
 		panic("encodeError with nil error")
 	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(ErrorStatusCode(err.Error()))
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"error": err.Error(),
-	})
+	// If the error is an application error then get the status code and body from the error.
+	// Otherwise, return a 500 error status code.
+	if _, ok := err.(booking.Error); ok {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(ErrorStatusCode(err.(booking.Error).Code))
+		json.NewEncoder(w).Encode(err)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 type empty struct{}

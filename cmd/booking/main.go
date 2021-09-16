@@ -4,18 +4,19 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/go-kit/kit/log"
-	"github.com/openmesh/booking"
-	"github.com/openmesh/booking/ent"
-	"github.com/openmesh/booking/ent/migrate"
-	"github.com/openmesh/booking/http"
-	"github.com/pelletier/go-toml"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"os/user"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-kit/kit/log"
+	"github.com/openmesh/booking"
+	"github.com/openmesh/booking/ent"
+	"github.com/openmesh/booking/ent/migrate"
+	"github.com/openmesh/booking/http"
+	"github.com/pelletier/go-toml"
 
 	logging "github.com/openmesh/booking/log"
 )
@@ -191,6 +192,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	{
 		resourceService = ent.NewResourceService(m.Client)
 		resourceService = logging.ResourceLoggingMiddleware(logger)(resourceService)
+		resourceService = booking.ResourceValidationMiddleware()(resourceService)
 	}
 	var organizationService booking.OrganizationService
 	{
@@ -198,9 +200,6 @@ func (m *Main) Run(ctx context.Context) (err error) {
 		organizationService = logging.OrganizationLoggingMiddleware(logger)(organizationService)
 	}
 
-	handler := ent.NewHandler(m.Client)
-
-	m.HTTPServer.Handler = handler
 	// userService := sqlite.NewUserService(m.DB)
 
 	// Attach user service to Main for testing.
@@ -224,6 +223,8 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	// m.HTTPServer.EventService = eventService
 	// m.HTTPServer.UserService = userService
 
+	// Attach logger to server.
+	m.HTTPServer.AttachLogger(logger)
 	// Register routes that require services to be initialized.
 	m.HTTPServer.RegisterRoutes()
 
