@@ -70,7 +70,7 @@ func decodeFindResourceByIDRequest(_ context.Context, r *http.Request) (interfac
 			Code:   booking.EINVALID,
 			Detail: "One or more validation errors occurred while processing your request.",
 			Title:  "Invalid request",
-			Params: []booking.ErrorParam{
+			Params: []booking.ValidationError{
 				{
 					Name:   "ID",
 					Reason: "Must be a valid integer",
@@ -85,13 +85,13 @@ func decodeFindResourceByIDRequest(_ context.Context, r *http.Request) (interfac
 func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	req := booking.FindResourcesRequest{}
 
-	var errorParams []booking.ErrorParam
+	var errorParams []booking.ValidationError
 
 	idStr := r.URL.Query().Get("id")
 	if idStr != "" {
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			errorParams = append(errorParams, booking.ErrorParam{
+			errorParams = append(errorParams, booking.ValidationError{
 				Name:   "ID",
 				Reason: "Must be a valid integer",
 			})
@@ -113,7 +113,7 @@ func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}
 	if offsetStr != "" {
 		offset, err := strconv.Atoi(offsetStr)
 		if err != nil {
-			errorParams = append(errorParams, booking.ErrorParam{
+			errorParams = append(errorParams, booking.ValidationError{
 				Name:   "Offset",
 				Reason: "Must be a valid integer",
 			})
@@ -125,7 +125,7 @@ func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}
 	if limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil {
-			errorParams = append(errorParams, booking.ErrorParam{
+			errorParams = append(errorParams, booking.ValidationError{
 				Name:   "Offset",
 				Reason: "Must be a valid integer",
 			})

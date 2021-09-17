@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"time"
-
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 // Resource represents a bookable item.
@@ -99,16 +97,13 @@ type FindResourceByIDRequest struct {
 
 // Validate a FindResourceByIDRequest. Returns validation.Errors if validation
 // fails.
-func (r FindResourceByIDRequest) Validate() error {
-	return validation.ValidateStruct(
-		&r,
-		// ID must be greater than 0
-		validation.Field(
-			&r.ID,
-			validation.Required.Error("Cannot be 0"),
-			validation.Min(1).Error("Must be greater than 0"),
-		),
-	)
+func (r FindResourceByIDRequest) Validate() []ValidationError {
+	if r.ID < 1 {
+		return []ValidationError{
+			{Name: "id", Reason: "Must be at least 1"},
+		}
+	}
+	return nil
 }
 
 // FindResourceByIDResponse represents a response returned by the
@@ -139,31 +134,22 @@ type FindResourcesRequest struct {
 
 // Validate a FindResourcesRequest. Returns validation.Errors if validation
 // fails.
-func (r FindResourcesRequest) Validate() error {
+func (r FindResourcesRequest) Validate() []ValidationError {
+	errs := make([]ValidationError, 0)
+	if r.ID != nil && *r.ID < 1 {
+		errs = append(errs, ValidationError{Name: "id", Reason: "Must be at least 1"})
+	}
+	if r.Offset < 0 {
+		errs = append(errs, ValidationError{Name: "offset", Reason: "Must be greater than or equal to 0"})
+	}
+	if r.Limit < 0 {
+		errs = append(errs, ValidationError{Name: "limit", Reason: "Must be greater than or equal to 0"})
+	}
 	validOrderByValues := []string{"name", "description", "timezone", "password", "price", "bookingPrice", "createdAt", "updatedAt"}
-	return validation.ValidateStruct(
-		&r,
-		// ID must be greater than 0.
-		validation.Field(
-			&r.ID,
-			validation.Min(1).Error("Must be greater than 0"),
-		),
-		// Offset must be greater than 0.
-		validation.Field(
-			&r.Offset,
-			validation.Min(0).Error("Must be greater than or equal to 0"),
-		),
-		// Limit must be greater than 0.
-		validation.Field(
-			&r.Limit,
-			validation.Min(0).Error("Must be greater than or equal to 0"),
-		),
-		// OrderBy must be a valid property name.
-		validation.Field(
-			&r.OrderBy,
-			validation.In(validOrderByValues).Error("Must be valid property name"),
-		),
-	)
+	if r.OrderBy != nil && !Strings(validOrderByValues).contains(*r.OrderBy) {
+		errs = append(errs, ValidationError{Name: "orderBy", Reason: "Must be a valid property name"})
+	}
+	return errs
 }
 
 // FindResourcesResponse represents a response returned by the FindResources
@@ -188,40 +174,27 @@ type CreateResourceRequest struct {
 	BookingPrice int     `json:"bookingPrice"`
 }
 
-func (r CreateResourceRequest) Validate() error {
-	err := validation.ValidateStruct(
-		&r,
-		validation.Field(
-			&r.Name,
-			validation.Required.Error("Field is required"),
-		),
-		validation.Field(
-			&r.Slots,
-			validation.Required.Error("Must contain at least one slot"),
-		),
-	)
-
-	var errParams []ErrorParam
-	if _, ok := err.(validation.Errors); ok {
-		for k, v := range err.(validation.Errors) {
-			errParams = append(errParams, ErrorParam{
-				Name:   k,
-				Reason: v.Error(),
-			})
-		}
+// Validate a CreateResourceRequest. Returns validation.Errors if validation
+// fails
+func (r CreateResourceRequest) Validate() []ValidationError {
+	var errs []ValidationError
+	if r.Name == "" {
+		errs = append(errs, ValidationError{Name: "name", Reason: "Name is required"})
 	}
-
-	errParams = append(errParams, validateSlots(r.Slots)...)
-
-	if len(errParams) > 0 {
-		return Error{
-			Code:   EINVALID,
-			Detail: "One or more validation errors occurred while processing your request.",
-			Title:  "Invalid request",
-			Params: errParams,
-		}
+	if len(r.Slots) == 0 {
+		errs = append(errs, ValidationError{Name: "slots", Reason: "Must contain at least one slot"})
 	}
-	return nil
+	if r.Price < 0 {
+		errs = append(errs, ValidationError{Name: "price", Reason: "Cannot be less than 0"})
+	}
+	if r.BookingPrice < 0 {
+		errs = append(errs, ValidationError{Name: "bookingPrice", Reason: "Cannot be less than 0"})
+	}
+	if !validTimezone(r.Timezone) {
+		errs = append(errs, ValidationError{Name: "timezone", Reason: "Must be valid timezone in the format UTC±HH:MM"})
+	}
+	errs = append(errs, validateSlots(r.Slots)...)
+	return errs
 }
 
 // CreateResourceResponse represents a response returned by the CreateResource
@@ -234,6 +207,7 @@ type CreateResourceResponse struct {
 // Error implements the errorer interface. Returns property Err from the response.
 func (r CreateResourceResponse) Error() error { return r.Err }
 
+// UpdateResourceByIDRequest represents a request used by ResourceService.UpdateResourceRequest.
 type UpdateResourceRequest struct {
 	ID           int     `json:"id"`
 	Name         string  `json:"name"`
@@ -245,14 +219,30 @@ type UpdateResourceRequest struct {
 	Slots        []*Slot `json:"slots"`
 }
 
-func (r UpdateResourceRequest) Validate() error {
-	return validation.ValidateStruct(
-		&r,
-		validation.Field(
-			&r.Name,
-			validation.Required.Error("Field is required"),
-		),
-	)
+// Validate an UpdateResourceRequest. Returns validation.Errors if validation
+// fails.
+func (r UpdateResourceRequest) Validate() []ValidationError {
+	var errs []ValidationError
+	if r.ID < 1 {
+		errs = append(errs, ValidationError{Name: "id", Reason: "Must be at least 1"})
+	}
+	if r.Name == "" {
+		errs = append(errs, ValidationError{Name: "name", Reason: "Name is required"})
+	}
+	if len(r.Slots) == 0 {
+		errs = append(errs, ValidationError{Name: "slots", Reason: "Must contain at least one slot"})
+	}
+	if r.Price < 0 {
+		errs = append(errs, ValidationError{Name: "price", Reason: "Cannot be less than 0"})
+	}
+	if r.BookingPrice < 0 {
+		errs = append(errs, ValidationError{Name: "bookingPrice", Reason: "Cannot be less than 0"})
+	}
+	if !validTimezone(r.Timezone) {
+		errs = append(errs, ValidationError{Name: "timezone", Reason: "Must be valid timezone in the format UTC±HH:MM"})
+	}
+	errs = append(errs, validateSlots(r.Slots)...)
+	return errs
 }
 
 // UpdateResourcesResponse represents a response returned by the UpdateResource
@@ -265,20 +255,18 @@ type UpdateResourceResponse struct {
 // Error implements the errorer interface. Returns property Err from the response.
 func (r UpdateResourceResponse) Error() error { return r.Err }
 
+// DeleteResourceRequest represents a request used by ResourceService.DeleteResourceRequest.
 type DeleteResourceRequest struct {
 	ID int `json:"id"`
 }
 
-func (r DeleteResourceRequest) Validate() error {
-	return validation.ValidateStruct(
-		&r,
-		// ID must be greater than 0
-		validation.Field(
-			&r.ID,
-			validation.Required.Error("Cannot be 0"),
-			validation.Min(1).Error("Must be greater than 0"),
-		),
-	)
+// Validate a DeleteResourceRequest. Returns validation.Errors if validation
+// fails.
+func (r DeleteResourceRequest) Validate() []ValidationError {
+	if r.ID < 1 {
+		return []ValidationError{{Name: "id", Reason: "Must be at least 1"}}
+	}
+	return nil
 }
 
 // DeleteResourceResponse represents a response returned by the DeleteResource
@@ -308,30 +296,20 @@ type resourceValidationMiddleware struct {
 // processValidation checks if the error is of type validation.Errors and if it
 // is wraps them in a domain Error. If not then it is expected that the error
 // should already be a domain Error and the value is returned as is.
-func processValidationError(err error) error {
-	if _, ok := err.(validation.Errors); ok {
-		var errParams []ErrorParam
-		for k, v := range err.(validation.Errors) {
-			errParams = append(errParams, ErrorParam{
-				Name:   k,
-				Reason: v.Error(),
-			})
-		}
-		return Error{
-			Code:   EINVALID,
-			Detail: "One or more validation errors occurred while processing your request.",
-			Title:  "Invalid request",
-			Params: errParams,
-		}
+func wrapValidationErrors(errs []ValidationError) error {
+	return Error{
+		Code:   EINVALID,
+		Detail: "One or more validation errors occurred while processing your request.",
+		Title:  "Invalid request",
+		Params: errs,
 	}
-	return err
 }
 
 // FindResourceByID validates a FindResourceByID request made to a ResourceService.
 func (mw resourceValidationMiddleware) FindResourceByID(ctx context.Context, req FindResourceByIDRequest) (*Resource, error) {
-	err := req.Validate()
-	if err != nil {
-		return nil, processValidationError(err)
+	errs := req.Validate()
+	if len(errs) > 0 {
+		return nil, wrapValidationErrors(errs)
 	}
 	return mw.ResourceService.FindResourceByID(ctx, req)
 }
@@ -339,9 +317,9 @@ func (mw resourceValidationMiddleware) FindResourceByID(ctx context.Context, req
 // FindResources validates a FindResourcesRequest. Forwards the request to the
 // next middleware or service if valid and returns an error otherwise.
 func (mw resourceValidationMiddleware) FindResources(ctx context.Context, req FindResourcesRequest) ([]*Resource, int, error) {
-	err := req.Validate()
-	if err != nil {
-		return nil, 0, processValidationError(err)
+	errs := req.Validate()
+	if len(errs) > 0 {
+		return nil, 0, wrapValidationErrors(errs)
 	}
 	return mw.ResourceService.FindResources(ctx, req)
 }
@@ -349,9 +327,9 @@ func (mw resourceValidationMiddleware) FindResources(ctx context.Context, req Fi
 // CreateResource validates a CreateResourceRequest. Forwards the request to the
 // next middleware or service if the request is valid and returns an error otherwise.
 func (mw resourceValidationMiddleware) CreateResource(ctx context.Context, req CreateResourceRequest) (*Resource, error) {
-	err := req.Validate()
-	if err != nil {
-		return nil, processValidationError(err)
+	errs := req.Validate()
+	if len(errs) > 0 {
+		return nil, wrapValidationErrors(errs)
 	}
 	return mw.ResourceService.CreateResource(ctx, req)
 }
@@ -360,9 +338,9 @@ func (mw resourceValidationMiddleware) CreateResource(ctx context.Context, req C
 // the next middleware or service if the request is valid and returns an error
 // otherwise.
 func (mw resourceValidationMiddleware) UpdateResource(ctx context.Context, req UpdateResourceRequest) (*Resource, error) {
-	err := req.Validate()
-	if err != nil {
-		return nil, processValidationError(err)
+	errs := req.Validate()
+	if len(errs) > 0 {
+		return nil, wrapValidationErrors(errs)
 	}
 	return mw.ResourceService.UpdateResource(ctx, req)
 }
@@ -371,22 +349,27 @@ func (mw resourceValidationMiddleware) UpdateResource(ctx context.Context, req U
 // next middleware or service if the request is valid and returns an error
 // otherwise.
 func (mw resourceValidationMiddleware) DeleteResource(ctx context.Context, req DeleteResourceRequest) error {
-	err := req.Validate()
-	if err != nil {
-		return processValidationError(err)
+	errs := req.Validate()
+	if len(errs) > 0 {
+		return wrapValidationErrors(errs)
 	}
+
 	return mw.ResourceService.DeleteResource(ctx, req)
 }
 
-func validateSlots(slots []*Slot) []ErrorParam {
-	var errParams []ErrorParam
+// validateSlots checks the validity of a []*Slot. Returns a []ValidationError
+// containing a ValidationError for each issue found. Checks that startTime and
+// endTimes are in the correct format, that startTime is earlier than endTime,
+// and that there are no overlapping slots found for any given day.
+func validateSlots(slots []*Slot) []ValidationError {
+	var errParams []ValidationError
 	// Validate slots
 	// Check that they all have correct time format
 	for i, s := range slots {
 		timesAreValid := true
 		err := validateSlotTime(s.StartTime)
 		if err != nil {
-			errParams = append(errParams, ErrorParam{
+			errParams = append(errParams, ValidationError{
 				Name:   fmt.Sprintf("slots[%d].startTime", i),
 				Reason: "Must be a valid time in the format HH:MM",
 			})
@@ -394,7 +377,7 @@ func validateSlots(slots []*Slot) []ErrorParam {
 		}
 		err = validateSlotTime(s.EndTime)
 		if err != nil {
-			errParams = append(errParams, ErrorParam{
+			errParams = append(errParams, ValidationError{
 				Name:   fmt.Sprintf("slots[%d].endTime", i),
 				Reason: "Must be a valid time in the format HH:MM",
 			})
@@ -405,7 +388,7 @@ func validateSlots(slots []*Slot) []ErrorParam {
 		}
 		startPrecedesEnd, err := timePrecedes(s.StartTime, s.EndTime)
 		if err != nil || !startPrecedesEnd {
-			errParams = append(errParams, ErrorParam{
+			errParams = append(errParams, ValidationError{
 				Name:   fmt.Sprintf("slots[%d]", i),
 				Reason: "Start time must be earlier than end time",
 			})
@@ -451,7 +434,7 @@ func validateSlots(slots []*Slot) []ErrorParam {
 					continue
 				}
 				if !equal {
-					errParams = append(errParams, ErrorParam{
+					errParams = append(errParams, ValidationError{
 						Name:   "slots",
 						Reason: fmt.Sprintf("Overlapping start and end times detected for slots with day '%s'", k),
 					})

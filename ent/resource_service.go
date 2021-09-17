@@ -77,8 +77,13 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 	if organizationID == 0 {
 		return nil, booking.Errorf(booking.EUNAUTHORIZED, "Failed to create resource: No user authenticated")
 	}
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	entity, err := s.client.Resource.Create().
+	// Create resource
+	r, err := tx.Resource.Create().
 		SetBookingPrice(req.BookingPrice).
 		SetDescription(req.Description).
 		SetName(req.Name).
@@ -88,11 +93,26 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 		SetTimezone(req.Timezone).
 		Save(ctx)
 
+	// Create slots for resource
+	for _, s := range req.Slots {
+		slot, err := tx.Slot.Create().
+			SetDay(s.Day).
+			SetEndTime(s.EndTime).
+			SetStartTime(s.StartTime).
+			SetNillableQuantity(s.Quantity).
+			SetResource(r).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		r.Edges.Slots = append(r.Edges.Slots, slot)
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	res := entity.toModel()
+	res := r.toModel()
 
 	return res, nil
 }

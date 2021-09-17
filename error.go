@@ -38,13 +38,7 @@ type Error struct {
 
 	// An optional slice of parameter specific errors. Useful when returning
 	// validation errors.
-	Params []ErrorParam `json:"params,omitempty"`
-}
-
-// ErrorParam is used to return parameter specific issues within an Error.
-type ErrorParam struct {
-	Name   string `json:"name"`
-	Reason string `json:"reason"`
+	Params []ValidationError `json:"params,omitempty"`
 }
 
 // Error implements the error interface. Not used by the application otherwise.
