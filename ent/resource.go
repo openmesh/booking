@@ -34,7 +34,7 @@ type Resource struct {
 	// BookingPrice holds the value of the "bookingPrice" field.
 	BookingPrice int `json:"bookingPrice,omitempty"`
 	// OrganizationId holds the value of the "organizationId" field.
-	OrganizationId int `json:"organizationId,omitempty"`
+	OrganizationId int `json:"organizationId,omitempty" OrganizationID`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ResourceQuery when eager-loading is set.
 	Edges ResourceEdges `json:"edges"`

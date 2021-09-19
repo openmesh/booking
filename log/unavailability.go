@@ -19,72 +19,67 @@ type unavailabilityLoggingMiddleware struct {
 	booking.UnavailabilityService
 }
 
-func (mw unavailabilityLoggingMiddleware) FindUnavailabilityByID(ctx context.Context, id int) (unavailability *booking.Unavailability, err error) {
+func (mw unavailabilityLoggingMiddleware) FindUnavailabilityByID(ctx context.Context, req booking.FindUnavailabilityByIDRequest) (res booking.FindUnavailabilityByIDResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "find_unavailability_by_id",
-			"id", id,
-			"unavailability", unavailability,
-			"err", err,
+			"request", req,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	unavailability, err = mw.UnavailabilityService.FindUnavailabilityByID(ctx, id)
+	res = mw.UnavailabilityService.FindUnavailabilityByID(ctx, req)
 	return
 }
 
-func (mw unavailabilityLoggingMiddleware) FindUnavailabilities(ctx context.Context, filter booking.UnavailabilityFilter) (unavailabilities []*booking.Unavailability, totalItems int, err error) {
+func (mw unavailabilityLoggingMiddleware) FindUnavailabilities(ctx context.Context, req booking.FindUnavailabilitiesRequest) (res booking.FindUnavailabilitiesResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "find_unavailabilities",
-			"filter", filter,
-			"unavailabilities", unavailabilities,
-			"totalItems", totalItems,
-			"err", err,
+			"request", req,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	unavailabilities, totalItems, err = mw.UnavailabilityService.FindUnavailabilities(ctx, filter)
+	res = mw.UnavailabilityService.FindUnavailabilities(ctx, req)
 	return
 }
 
-func (mw unavailabilityLoggingMiddleware) CreateUnavailability(ctx context.Context, unavailability *booking.Unavailability) (err error) {
+func (mw unavailabilityLoggingMiddleware) CreateUnavailability(ctx context.Context, req booking.CreateUnavailabilityRequest) (res booking.CreateUnavailabilityResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "create_unavailability",
-			"unavailability", unavailability,
-			"err", err,
+			"request", req,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	err = mw.UnavailabilityService.CreateUnavailability(ctx, unavailability)
+	res = mw.UnavailabilityService.CreateUnavailability(ctx, req)
 	return
 }
 
-func (mw unavailabilityLoggingMiddleware) UpdateUnavailability(ctx context.Context, id int, upd booking.UnavailabilityUpdate) (unavailability *booking.Unavailability, err error) {
+func (mw unavailabilityLoggingMiddleware) UpdateUnavailability(ctx context.Context, req booking.UpdateUnavailabilityRequest) (res booking.UpdateUnavailabilityResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "update_unavailability",
-			"id", id,
-			"update", upd,
-			"unavailability", unavailability,
-			"err", err,
+			"request", req,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	unavailability, err = mw.UnavailabilityService.UpdateUnavailability(ctx, id, upd)
+	res = mw.UnavailabilityService.UpdateUnavailability(ctx, req)
 	return
 }
 
-func (mw unavailabilityLoggingMiddleware) DeleteUnavailability(ctx context.Context, id int) (err error) {
+func (mw unavailabilityLoggingMiddleware) DeleteUnavailability(ctx context.Context, req booking.DeleteUnavailabilityRequest) (res booking.DeleteUnavailabilityResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "delete_unavailability",
-			"id", id,
-			"err", err,
+			"request", req,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	err = mw.UnavailabilityService.DeleteUnavailability(ctx, id)
+	res = mw.UnavailabilityService.DeleteUnavailability(ctx, req)
 	return
 }

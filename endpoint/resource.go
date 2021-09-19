@@ -7,9 +7,9 @@ import (
 	"github.com/openmesh/booking"
 )
 
-// ResourceEndpoints collects all the endpoints that compose a
-// resource service. It's used as a helper struct, to collect all the
-// endpoints into a single parameter.
+// ResourceEndpoints collects all the endpoints that compose a resource service.
+// It's used as a helper struct, to collect all the endpoints into a single
+// parameter.
 type ResourceEndpoints struct {
 	FindResourceByIDEndpoint endpoint.Endpoint
 	FindResourcesEndpoint    endpoint.Endpoint
@@ -18,8 +18,8 @@ type ResourceEndpoints struct {
 	DeleteResourceEndpoint   endpoint.Endpoint
 }
 
-// MakeResourceEndpoints returns a ResourceEndpoints struct where
-// each endpoint invokes the corresponding method on the provided service.
+// MakeResourceEndpoints returns a ResourceEndpoints struct where each endpoint
+// invokes the corresponding method on the provided service.
 func MakeResourceEndpoints(s booking.ResourceService) ResourceEndpoints {
 	return ResourceEndpoints{
 		FindResourceByIDEndpoint: MakeFindResourceByIDEndpoint(s),
@@ -32,45 +32,35 @@ func MakeResourceEndpoints(s booking.ResourceService) ResourceEndpoints {
 
 // MakeFindResourceByIDEndpoint returns an endpoint via the passed service.
 func MakeFindResourceByIDEndpoint(s booking.ResourceService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(booking.FindResourceByIDRequest)
-		resource, err := s.FindResourceByID(ctx, req)
-		return booking.FindResourceByIDResponse{Resource: resource, Err: err}, nil
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		return s.FindResourceByID(ctx, r.(booking.FindResourceByIDRequest)), nil
 	}
 }
 
 // MakeFindResourcesEndpoint returns an endpoint via the passed service.
 func MakeFindResourcesEndpoint(s booking.ResourceService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(booking.FindResourcesRequest)
-		resources, totalItems, err := s.FindResources(ctx, req)
-		return booking.FindResourcesResponse{Resources: resources, TotalItems: totalItems, Err: err}, nil
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		return s.FindResources(ctx, r.(booking.FindResourcesRequest)), nil
 	}
 }
 
 // MakeCreateResourceEndpoint returns an endpoint via the passed service.
 func MakeCreateResourceEndpoint(s booking.ResourceService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(booking.CreateResourceRequest)
-		resource, err := s.CreateResource(ctx, req)
-		return booking.CreateResourceResponse{Resource: resource, Err: err}, nil
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		return s.CreateResource(ctx, r.(booking.CreateResourceRequest)), nil
 	}
 }
 
 // MakeUpdateResourceEndpoint returns an endpoint via the passed service.
 func MakeUpdateResourceEndpoint(s booking.ResourceService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(booking.UpdateResourceRequest)
-		resource, err := s.UpdateResource(ctx, req)
-		return booking.UpdateResourceResponse{Resource: resource, Err: err}, nil
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		return s.UpdateResource(ctx, r.(booking.UpdateResourceRequest)), nil
 	}
 }
 
 // MakeDeleteResourceEndpoint returns an endpoint via the passed service.
 func MakeDeleteResourceEndpoint(s booking.ResourceService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(booking.DeleteResourceRequest)
-		err := s.DeleteResource(ctx, req)
-		return booking.DeleteResourceResponse{Err: err}, nil
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		return s.DeleteResource(ctx, r.(booking.DeleteResourceRequest)), nil
 	}
 }

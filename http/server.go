@@ -77,8 +77,8 @@ func NewServer() *Server {
 	s.router.NotFoundHandler = http.HandlerFunc(s.handleNotFound)
 
 	// Handle embedded asset serving. This serves files embedded from http/assets.
-	//fs := http.FileServer(http.Dir("./http/assets"))
-	//s.router.PathPrefix("/static/").Handler(fs)
+	// fs := http.FileServer(http.Dir("./http/assets"))
+	// s.router.PathPrefix("/static/").Handler(fs)
 
 	// Setup endpoint to display deployed version.
 	s.router.HandleFunc("/debug/version", s.handleVersion).Methods("GET")
@@ -121,6 +121,7 @@ func (s *Server) RegisterRoutes() {
 		r := s.router.PathPrefix("/").Subrouter()
 		r.Use(s.requireAuth)
 		s.registerResourceRoutes(r)
+		s.registerUnavailabilityRoutes(r)
 		// s.registerDialRoutes(r)
 		// s.registerDialMembershipRoutes(r)
 		// s.registerEventRoutes(r)

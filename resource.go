@@ -65,38 +65,37 @@ type ResourceService interface {
 	// FindResourceByID retrieves a single resource by ID along with associated availabilities.
 	// Returns ENOTFOUND if resource does not exist or user does not have
 	// permission to view it.
-	FindResourceByID(ctx context.Context, req FindResourceByIDRequest) (*Resource, error)
+	FindResourceByID(ctx context.Context, req FindResourceByIDRequest) FindResourceByIDResponse
 
 	// FindResources retrieves a lit of resources based on a filter. Only returns
 	// resources that accessible to the user. Also returns a count of total matching bookings
 	// which may be different from the number of returned bookings if the "Limit" field is set.
-	FindResources(ctx context.Context, req FindResourcesRequest) ([]*Resource, int, error)
+	FindResources(ctx context.Context, req FindResourcesRequest) FindResourcesResponse
 
 	// CreateResource creates a new resource and assigns the current user as the owner.
 	// Returns the created Resource.
-	CreateResource(ctx context.Context, req CreateResourceRequest) (*Resource, error)
+	CreateResource(ctx context.Context, req CreateResourceRequest) CreateResourceResponse
 
 	// UpdateResource updates an existing resource by ID. Only the resource owner can update a
 	// resource. Returns the new resource state even if there was an error during update.
 	//
 	// Returns ENOTFOUND if the resource does not exist or the user does not have
 	// permission to update it.
-	UpdateResource(ctx context.Context, req UpdateResourceRequest) (*Resource, error)
+	UpdateResource(ctx context.Context, req UpdateResourceRequest) UpdateResourceResponse
 
 	// DeleteResource permanently removes a resource by ID. Only the resource owner may delete a
 	// resource. Returns ENOTFOUND if the resource does not exist or the user does not have
 	// permission to delete it.
-	DeleteResource(ctx context.Context, req DeleteResourceRequest) error
+	DeleteResource(ctx context.Context, req DeleteResourceRequest) DeleteResourceResponse
 }
 
 // FindResourceByIDRequest represents a request used by ResourceService.FindResourceByID.
 type FindResourceByIDRequest struct {
 	ID int `json:"id"`
-	// Expand []string `json:"expand"`
 }
 
-// Validate a FindResourceByIDRequest. Returns validation.Errors if validation
-// fails.
+// Validate a FindResourceByIDRequest. Returns a ValidationError for each
+// requirement that fails.
 func (r FindResourceByIDRequest) Validate() []ValidationError {
 	if r.ID < 1 {
 		return []ValidationError{
@@ -128,12 +127,12 @@ type FindResourcesRequest struct {
 	Offset int `json:"offset"`
 	Limit  int `json:"limit"`
 
-	// Booking property to order by.
+	// Resource property to order by.
 	OrderBy *string `json:"orderBy"`
 }
 
-// Validate a FindResourcesRequest. Returns validation.Errors if validation
-// fails.
+// Validate a FindResourcesRequest. Returns a ValidationError for each
+// requirement that fails..
 func (r FindResourcesRequest) Validate() []ValidationError {
 	errs := make([]ValidationError, 0)
 	if r.ID != nil && *r.ID < 1 {
@@ -174,8 +173,8 @@ type CreateResourceRequest struct {
 	BookingPrice int     `json:"bookingPrice"`
 }
 
-// Validate a CreateResourceRequest. Returns validation.Errors if validation
-// fails
+// Validate a CreateResourceRequest. Returns a ValidationError for each
+// requirement that fails.
 func (r CreateResourceRequest) Validate() []ValidationError {
 	var errs []ValidationError
 	if r.Name == "" {
@@ -219,8 +218,8 @@ type UpdateResourceRequest struct {
 	Slots        []*Slot `json:"slots"`
 }
 
-// Validate an UpdateResourceRequest. Returns validation.Errors if validation
-// fails.
+// Validate an UpdateResourceRequest. Returns a ValidationError for each
+// requirement that fails.
 func (r UpdateResourceRequest) Validate() []ValidationError {
 	var errs []ValidationError
 	if r.ID < 1 {
@@ -260,8 +259,8 @@ type DeleteResourceRequest struct {
 	ID int `json:"id"`
 }
 
-// Validate a DeleteResourceRequest. Returns validation.Errors if validation
-// fails.
+// Validate a DeleteResourceRequest. Returns a ValidationError for each
+// requirement that fails.
 func (r DeleteResourceRequest) Validate() []ValidationError {
 	if r.ID < 1 {
 		return []ValidationError{{Name: "id", Reason: "Must be at least 1"}}
@@ -293,43 +292,31 @@ type resourceValidationMiddleware struct {
 	ResourceService
 }
 
-// processValidation checks if the error is of type validation.Errors and if it
-// is wraps them in a domain Error. If not then it is expected that the error
-// should already be a domain Error and the value is returned as is.
-func wrapValidationErrors(errs []ValidationError) error {
-	return Error{
-		Code:   EINVALID,
-		Detail: "One or more validation errors occurred while processing your request.",
-		Title:  "Invalid request",
-		Params: errs,
-	}
-}
-
 // FindResourceByID validates a FindResourceByID request made to a ResourceService.
-func (mw resourceValidationMiddleware) FindResourceByID(ctx context.Context, req FindResourceByIDRequest) (*Resource, error) {
+func (mw resourceValidationMiddleware) FindResourceByID(ctx context.Context, req FindResourceByIDRequest) FindResourceByIDResponse {
 	errs := req.Validate()
 	if len(errs) > 0 {
-		return nil, wrapValidationErrors(errs)
+		return FindResourceByIDResponse{Err: WrapValidationErrors(errs)}
 	}
 	return mw.ResourceService.FindResourceByID(ctx, req)
 }
 
 // FindResources validates a FindResourcesRequest. Forwards the request to the
 // next middleware or service if valid and returns an error otherwise.
-func (mw resourceValidationMiddleware) FindResources(ctx context.Context, req FindResourcesRequest) ([]*Resource, int, error) {
+func (mw resourceValidationMiddleware) FindResources(ctx context.Context, req FindResourcesRequest) FindResourcesResponse {
 	errs := req.Validate()
 	if len(errs) > 0 {
-		return nil, 0, wrapValidationErrors(errs)
+		return FindResourcesResponse{Err: WrapValidationErrors(errs)}
 	}
 	return mw.ResourceService.FindResources(ctx, req)
 }
 
 // CreateResource validates a CreateResourceRequest. Forwards the request to the
 // next middleware or service if the request is valid and returns an error otherwise.
-func (mw resourceValidationMiddleware) CreateResource(ctx context.Context, req CreateResourceRequest) (*Resource, error) {
+func (mw resourceValidationMiddleware) CreateResource(ctx context.Context, req CreateResourceRequest) CreateResourceResponse {
 	errs := req.Validate()
 	if len(errs) > 0 {
-		return nil, wrapValidationErrors(errs)
+		return CreateResourceResponse{Err: WrapValidationErrors(errs)}
 	}
 	return mw.ResourceService.CreateResource(ctx, req)
 }
@@ -337,10 +324,10 @@ func (mw resourceValidationMiddleware) CreateResource(ctx context.Context, req C
 // UpdateResource validates an UpdateResourceRequest. Forwards the request to
 // the next middleware or service if the request is valid and returns an error
 // otherwise.
-func (mw resourceValidationMiddleware) UpdateResource(ctx context.Context, req UpdateResourceRequest) (*Resource, error) {
+func (mw resourceValidationMiddleware) UpdateResource(ctx context.Context, req UpdateResourceRequest) UpdateResourceResponse {
 	errs := req.Validate()
 	if len(errs) > 0 {
-		return nil, wrapValidationErrors(errs)
+		return UpdateResourceResponse{Err: WrapValidationErrors(errs)}
 	}
 	return mw.ResourceService.UpdateResource(ctx, req)
 }
@@ -348,12 +335,11 @@ func (mw resourceValidationMiddleware) UpdateResource(ctx context.Context, req U
 // DeleteResource validates a DeleteResourceRequest. Forwards the request to the
 // next middleware or service if the request is valid and returns an error
 // otherwise.
-func (mw resourceValidationMiddleware) DeleteResource(ctx context.Context, req DeleteResourceRequest) error {
+func (mw resourceValidationMiddleware) DeleteResource(ctx context.Context, req DeleteResourceRequest) DeleteResourceResponse {
 	errs := req.Validate()
 	if len(errs) > 0 {
-		return wrapValidationErrors(errs)
+		return DeleteResourceResponse{Err: WrapValidationErrors(errs)}
 	}
-
 	return mw.ResourceService.DeleteResource(ctx, req)
 }
 

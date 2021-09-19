@@ -191,8 +191,8 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	var resourceService booking.ResourceService
 	{
 		resourceService = ent.NewResourceService(m.Client)
-		resourceService = logging.ResourceLoggingMiddleware(logger)(resourceService)
 		resourceService = booking.ResourceValidationMiddleware()(resourceService)
+		resourceService = logging.ResourceLoggingMiddleware(logger)(resourceService)
 	}
 	var organizationService booking.OrganizationService
 	{

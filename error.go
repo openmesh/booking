@@ -86,3 +86,15 @@ func Errorf(code string, format string, args ...interface{}) *Error {
 type Errorer interface {
 	Error() error
 }
+
+// WrapValidationErrors checks if the error is of type validation.Errors and if it
+// is wraps them in a domain Error. If not then it is expected that the error
+// should already be a domain Error and the value is returned as is.
+func WrapValidationErrors(errs []ValidationError) error {
+	return Error{
+		Code:   EINVALID,
+		Detail: "One or more validation errors occurred while processing your request.",
+		Title:  "Invalid request",
+		Params: errs,
+	}
+}

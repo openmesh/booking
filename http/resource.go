@@ -72,7 +72,7 @@ func decodeFindResourceByIDRequest(_ context.Context, r *http.Request) (interfac
 			Title:  "Invalid request",
 			Params: []booking.ValidationError{
 				{
-					Name:   "ID",
+					Name:   "id",
 					Reason: "Must be a valid integer",
 				},
 			},
@@ -85,14 +85,14 @@ func decodeFindResourceByIDRequest(_ context.Context, r *http.Request) (interfac
 func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	req := booking.FindResourcesRequest{}
 
-	var errorParams []booking.ValidationError
+	var errs []booking.ValidationError
 
 	idStr := r.URL.Query().Get("id")
 	if idStr != "" {
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			errorParams = append(errorParams, booking.ValidationError{
-				Name:   "ID",
+			errs = append(errs, booking.ValidationError{
+				Name:   "id",
 				Reason: "Must be a valid integer",
 			})
 		}
@@ -113,8 +113,8 @@ func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}
 	if offsetStr != "" {
 		offset, err := strconv.Atoi(offsetStr)
 		if err != nil {
-			errorParams = append(errorParams, booking.ValidationError{
-				Name:   "Offset",
+			errs = append(errs, booking.ValidationError{
+				Name:   "offset",
 				Reason: "Must be a valid integer",
 			})
 		}
@@ -125,8 +125,8 @@ func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}
 	if limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil {
-			errorParams = append(errorParams, booking.ValidationError{
-				Name:   "Offset",
+			errs = append(errs, booking.ValidationError{
+				Name:   "offset",
 				Reason: "Must be a valid integer",
 			})
 		}
@@ -138,13 +138,8 @@ func decodeFindResourcesRequest(_ context.Context, r *http.Request) (interface{}
 		req.OrderBy = &orderBy
 	}
 
-	if len(errorParams) > 0 {
-		return nil, booking.Error{
-			Code:   booking.EINVALID,
-			Detail: "One or more validation errors occurred while processing your request.",
-			Title:  "Invalid request",
-			Params: errorParams,
-		}
+	if len(errs) > 0 {
+		return nil, booking.WrapValidationErrors(errs)
 	}
 
 	return req, nil
@@ -161,30 +156,54 @@ func decodeCreateResourceRequest(_ context.Context, r *http.Request) (interface{
 func decodeUpdateResourceRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var req booking.UpdateResourceRequest
 	vars := mux.Vars(r)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, err
+	}
+	var errs []booking.ValidationError
 	idStr, ok := vars["id"]
 	if !ok {
 		return nil, ErrBadRouting
 	}
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return nil, err
+	if idStr != "" {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			errs = append(errs, booking.ValidationError{
+				Name:   "id",
+				Reason: "Must be a valid integer",
+			})
+		}
+		req.ID = id
 	}
-	req.ID = id
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return nil, err
+
+	if len(errs) > 0 {
+		return nil, booking.WrapValidationErrors(errs)
 	}
+
 	return req, nil
 }
 
 func decodeDeleteResourceRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var req booking.DeleteUnavailabilityRequest
+	var errs []booking.ValidationError
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
 	if !ok {
 		return nil, ErrBadRouting
 	}
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return nil, err
+	if idStr != "" {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			errs = append(errs, booking.ValidationError{
+				Name:   "id",
+				Reason: "Must be a valid integer",
+			})
+		}
+		req.ID = id
 	}
-	return booking.DeleteResourceRequest{ID: id}, nil
+
+	if len(errs) > 0 {
+		return nil, booking.WrapValidationErrors(errs)
+	}
+
+	return req, nil
 }
