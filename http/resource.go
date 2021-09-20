@@ -66,19 +66,8 @@ func decodeFindResourceByIDRequest(_ context.Context, r *http.Request) (interfac
 	}
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		return nil, booking.Error{
-			Code:   booking.EINVALID,
-			Detail: "One or more validation errors occurred while processing your request.",
-			Title:  "Invalid request",
-			Params: []booking.ValidationError{
-				{
-					Name:   "id",
-					Reason: "Must be a valid integer",
-				},
-			},
-		}
+		return nil, booking.WrapValidationErrors([]booking.ValidationError{{Name: "id", Reason: "Must be a valid integer"}})
 	}
-
 	return booking.FindResourceByIDRequest{ID: id}, nil
 }
 

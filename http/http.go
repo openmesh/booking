@@ -4,11 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"reflect"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/openmesh/booking"
 )
 
@@ -172,3 +177,161 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 }
 
 type empty struct{}
+
+type propertyMetadata struct {
+	Key    string
+	Type   string
+	Source string
+}
+
+const sourceURL = "url"
+const sourceQuery = "query"
+const sourceJSON = "json"
+
+func decodeHTTPRequest(r *http.Request, v interface{}) error {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return errors.New("failed to decode http request: must be a pointer and not nil")
+	}
+	// Get type of v
+	t := reflect.ValueOf(v).Elem().Type()
+
+	// If struct has JSON properties then decode the request body into the struct.
+	hasJSON := containsJSONFields(t)
+	if hasJSON {
+		if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+			return err
+		}
+	}
+	// Get total number of fields for v
+	numField := t.NumField()
+
+	var errs []booking.ValidationError
+
+	for i := 0; i < numField; i++ {
+		f := reflect.Indirect(reflect.ValueOf(v)).Field(i)
+		fi := f.Interface()
+		source := t.Field(i).Tag.Get("source")
+		if source == "" {
+			return errors.New("failed to decode http request: struct properties must include a 'source' tag")
+		}
+		key := t.Field(i).Tag.Get("json")
+		if source == "" {
+			return errors.New("failed to decode http request: struct properties must include a 'json' tag")
+		}
+		var str string
+		switch source {
+		case sourceURL:
+			vars := mux.Vars(r)
+			var ok bool
+			str, ok = vars[key]
+			// URL properties are required so we return an error if one is not found.
+			if !ok {
+				return ErrBadRouting
+			}
+		case sourceQuery:
+			str = r.URL.Query().Get(key)
+		case sourceJSON:
+			continue
+		default:
+			return errors.New(fmt.Sprintf("failed to decode http request: invalid source tag on property '%s'", t.Field(i).Name))
+		}
+		switch fi.(type) {
+		case string:
+			f.Elem().Set(reflect.ValueOf(str))
+		case *string:
+			f.Elem().Set(reflect.ValueOf(&str))
+		case int:
+			val, err := strconv.Atoi(str)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Must be a valid integer",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(val))
+		case *int:
+			val, err := strconv.Atoi(str)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Must be a valid integer",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(&val))
+		case bool:
+			val, err := strconv.ParseBool(str)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Must be a valid boolean",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(val))
+		case *bool:
+			val, err := strconv.ParseBool(str)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Must be a valid boolean",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(&val))
+		case float32:
+			val, err := strconv.ParseFloat(str, 32)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Must be a valid float",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(val))
+		case *float32:
+			val, err := strconv.ParseFloat(str, 32)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Must be a valid float",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(&val))
+		case time.Time:
+			val, err := booking.ParseTime(str)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Unrecognized time format. Prefer RFC3339 formatting when submitting date times. https://datatracker.ietf.org/doc/html/rfc3339",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(val))
+		case *time.Time:
+			val, err := booking.ParseTime(str)
+			if err != nil {
+				errs = append(errs, booking.ValidationError{
+					Name:   key,
+					Reason: "Unrecognized time format. Prefer RFC3339 formatting when submitting date times. https://datatracker.ietf.org/doc/html/rfc3339",
+				})
+			}
+			f.Elem().Set(reflect.ValueOf(val))
+		}
+	}
+
+	if len(errs) > 0 {
+		return booking.WrapValidationErrors(errs)
+	}
+
+	return nil
+}
+
+func containsJSONFields(t reflect.Type) bool {
+	// Get total number of fields for v
+	numField := t.NumField()
+
+	for i := 0; i < numField; i++ {
+		source := t.Field(i).Tag.Get("source")
+		if source == sourceJSON {
+			return true
+		}
+	}
+	return false
+}

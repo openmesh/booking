@@ -19,77 +19,67 @@ type bookingLoggingMiddleware struct {
 	booking.BookingService
 }
 
-func (mw bookingLoggingMiddleware) FindBookingByID(ctx context.Context, id int) (booking *booking.Booking, err error) {
+func (mw bookingLoggingMiddleware) FindBookingByID(ctx context.Context, req booking.FindBookingByIDRequest) (res booking.FindBookingByIDResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "find_booking_by_id",
-			"id", id,
-			"booking", booking,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	booking, err = mw.BookingService.FindBookingByID(ctx, id)
+	res = mw.BookingService.FindBookingByID(ctx, req)
 	return
 }
 
-func (mw bookingLoggingMiddleware) FindBookings(ctx context.Context, filter booking.BookingFilter) (bookings []*booking.Booking, totalItems int, err error) {
+func (mw bookingLoggingMiddleware) FindBookings(ctx context.Context, req booking.FindBookingsRequest) (res booking.FindBookingsResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "find_bookings",
-			"filter", filter,
-			"bookings", bookings,
-			"total_items", totalItems,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	bookings, totalItems, err = mw.BookingService.FindBookings(ctx, filter)
+	res = mw.BookingService.FindBookings(ctx, req)
 	return
 }
 
-func (mw bookingLoggingMiddleware) CreateBooking(ctx context.Context, booking *booking.Booking) (err error) {
+func (mw bookingLoggingMiddleware) CreateBooking(ctx context.Context, req booking.CreateBookingRequest) (res booking.CreateBookingResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "create_booking",
-			"booking", booking,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	err = mw.BookingService.CreateBooking(ctx, booking)
+	res = mw.BookingService.CreateBooking(ctx, req)
 	return
 }
 
-func (mw bookingLoggingMiddleware) UpdateBooking(ctx context.Context, id int, upd booking.BookingUpdate) (booking *booking.Booking, err error) {
+func (mw bookingLoggingMiddleware) UpdateBooking(ctx context.Context, req booking.UpdateBookingRequest) (res booking.UpdateBookingResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "update_booking",
-			"id", id,
-			"update", upd,
-			"booking", booking,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	booking, err = mw.BookingService.UpdateBooking(ctx, id, upd)
+	res = mw.BookingService.UpdateBooking(ctx, req)
 	return
 }
 
-func (mw bookingLoggingMiddleware) DeleteBooking(ctx context.Context, id int) (err error) {
+func (mw bookingLoggingMiddleware) DeleteBooking(ctx context.Context, req booking.DeleteBookingRequest) (res booking.DeleteBookingResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "delete_booking",
-			"id", id,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	err = mw.BookingService.DeleteBooking(ctx, id)
+	res = mw.BookingService.DeleteBooking(ctx, req)
 	return
 }

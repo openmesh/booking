@@ -169,7 +169,7 @@ func (s *unavailabilityService) CreateUnavailability(
 		}
 	}
 
-	// Create unava
+	// Create unavailability
 	u, err := tx.Unavailability.
 		Create().
 		SetResourceID(req.ResourceID).
@@ -201,13 +201,67 @@ func (s *unavailabilityService) UpdateUnavailability(
 	ctx context.Context,
 	req booking.UpdateUnavailabilityRequest,
 ) booking.UpdateUnavailabilityResponse {
-	_, err := s.client.Tx(ctx)
+	tx, err := s.client.Tx(ctx)
+
+	orgID := booking.OrganizationIDFromContext(ctx)
+	// Retrieve unavailability
+	u, err := tx.Unavailability.
+		Query().
+		Where(
+			unavailability.ID(req.ID),
+			unavailability.ResourceId(req.ResourceID),
+			unavailability.HasResourceWith(resource.OrganizationId(orgID)),
+		).First(ctx)
+
+	if _, ok := err.(*NotFoundError); ok {
+		return booking.UpdateUnavailabilityResponse{Err: booking.WrapNotFoundError("unavailability")}
+	}
 	if err != nil {
 		return booking.UpdateUnavailabilityResponse{Err: err}
 	}
 
+	// Ensure that new unavailability will not conflict with any existing availabilities.
+	if count, err := tx.Unavailability.
+		Query().
+		Where(
+			unavailability.IDNEQ(req.ID),
+			unavailability.HasResourceWith(resource.ID(req.ResourceID)),
+			unavailability.HasResourceWith(resource.OrganizationId(booking.OrganizationIDFromContext(ctx))),
+			unavailability.Or(
+				// New unavailability begins during an existing unavailability
+				unavailability.And(unavailability.StartTimeLTE(req.StartTime), unavailability.EndTimeGTE(req.StartTime)),
+				// New unavailability ends during an exsting unavailability
+				unavailability.And(unavailability.StartTimeLTE(req.EndTime), unavailability.EndTimeGTE(req.EndTime)),
+				// New unavailability is entirely during an existing unavailability
+				unavailability.And(unavailability.StartTimeLTE(req.StartTime), unavailability.EndTimeGTE(req.EndTime)),
+				// Existing unavailability is entirely during an existing unavailability
+				unavailability.And(unavailability.StartTimeGTE(req.StartTime), unavailability.EndTimeLTE(req.EndTime)),
+			),
+		).
+		Count(ctx); err != nil {
+		return booking.UpdateUnavailabilityResponse{Err: err}
+	} else if count > 0 {
+		return booking.UpdateUnavailabilityResponse{
+			Err: booking.Error{
+				Code:   booking.ECONFLICT,
+				Detail: "Request unavailability would conflict with existing unavailabilities. Check start and end times for potential overlap.",
+				Title:  "Conflicting unavailability found",
+			},
+		}
+	}
+
+	u, err = tx.Unavailability.UpdateOne(u).SetStartTime(req.StartTime).SetEndTime(req.EndTime).Save(ctx)
+	if err != nil {
+		return booking.UpdateUnavailabilityResponse{Err: tx.Rollback()}
+	}
+
+	u.Edges.Resource, err = u.QueryResource().WithSlots().First(ctx)
+	if err != nil {
+		return booking.UpdateUnavailabilityResponse{Err: tx.Rollback()}
+	}
+
 	// Ensure unavailability exists
-	return booking.UpdateUnavailabilityResponse{}
+	return booking.UpdateUnavailabilityResponse{Unavailability: u.toModel()}
 }
 
 // Permanently removes a unavailability by ID. Only the unavailability owner
@@ -217,7 +271,21 @@ func (s *unavailabilityService) DeleteUnavailability(
 	ctx context.Context,
 	req booking.DeleteUnavailabilityRequest,
 ) booking.DeleteUnavailabilityResponse {
-	panic("not implemented") // TODO: Implement
+	orgID := booking.OrganizationIDFromContext(ctx)
+
+	if affected, err := s.client.Unavailability.
+		Delete().
+		Where(
+			unavailability.ID(req.ID),
+			unavailability.ResourceId(req.ResourceID),
+			unavailability.HasResourceWith(resource.OrganizationId(orgID))).
+		Exec(ctx); err != nil {
+		return booking.DeleteUnavailabilityResponse{Err: err}
+	} else if affected == 0 {
+		return booking.DeleteUnavailabilityResponse{Err: booking.WrapNotFoundError("unavailability")}
+	}
+
+	return booking.DeleteUnavailabilityResponse{}
 }
 
 func (u *Unavailability) toModel() *booking.Unavailability {
