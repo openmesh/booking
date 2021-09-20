@@ -17,11 +17,9 @@ import (
 	"github.com/openmesh/booking"
 )
 
-var (
-	// ErrBadRouting is returned when an expected path variable is missing.
-	// It always indicates programmer error.
-	ErrBadRouting = errors.New("inconsistent mapping between route and handler (programmer error)")
-)
+// ErrBadRouting is returned when an expected path variable is missing.
+// It always indicates programmer error.
+var ErrBadRouting = errors.New("inconsistent mapping between route and handler (programmer error)")
 
 // Client represents an HTTP client.
 type Client struct {
@@ -178,15 +176,11 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 
 type empty struct{}
 
-type propertyMetadata struct {
-	Key    string
-	Type   string
-	Source string
-}
-
-const sourceURL = "url"
-const sourceQuery = "query"
-const sourceJSON = "json"
+const (
+	sourceURL   = "url"
+	sourceQuery = "query"
+	sourceJSON  = "json"
+)
 
 func decodeHTTPRequest(r *http.Request, v interface{}) error {
 	rv := reflect.ValueOf(v)
@@ -234,13 +228,13 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 		case sourceJSON:
 			continue
 		default:
-			return errors.New(fmt.Sprintf("failed to decode http request: invalid source tag on property '%s'", t.Field(i).Name))
+			return fmt.Errorf("failed to decode http request: invalid source tag on property '%s'", t.Field(i).Name)
 		}
 		switch fi.(type) {
 		case string:
-			f.Elem().Set(reflect.ValueOf(str))
+			f.Set(reflect.ValueOf(str))
 		case *string:
-			f.Elem().Set(reflect.ValueOf(&str))
+			f.Set(reflect.ValueOf(&str))
 		case int:
 			val, err := strconv.Atoi(str)
 			if err != nil {
@@ -249,7 +243,9 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Must be a valid integer",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(val))
+			if f.CanAddr() && f.CanSet() {
+				f.Set(reflect.ValueOf(val))
+			}
 		case *int:
 			val, err := strconv.Atoi(str)
 			if err != nil {
@@ -258,7 +254,7 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Must be a valid integer",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(&val))
+			f.Set(reflect.ValueOf(&val))
 		case bool:
 			val, err := strconv.ParseBool(str)
 			if err != nil {
@@ -267,7 +263,7 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Must be a valid boolean",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(val))
+			f.Set(reflect.ValueOf(val))
 		case *bool:
 			val, err := strconv.ParseBool(str)
 			if err != nil {
@@ -276,7 +272,7 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Must be a valid boolean",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(&val))
+			f.Set(reflect.ValueOf(&val))
 		case float32:
 			val, err := strconv.ParseFloat(str, 32)
 			if err != nil {
@@ -285,7 +281,7 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Must be a valid float",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(val))
+			f.Set(reflect.ValueOf(val))
 		case *float32:
 			val, err := strconv.ParseFloat(str, 32)
 			if err != nil {
@@ -294,7 +290,7 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Must be a valid float",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(&val))
+			f.Set(reflect.ValueOf(&val))
 		case time.Time:
 			val, err := booking.ParseTime(str)
 			if err != nil {
@@ -303,7 +299,7 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Unrecognized time format. Prefer RFC3339 formatting when submitting date times. https://datatracker.ietf.org/doc/html/rfc3339",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(val))
+			f.Set(reflect.ValueOf(val))
 		case *time.Time:
 			val, err := booking.ParseTime(str)
 			if err != nil {
@@ -312,7 +308,7 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 					Reason: "Unrecognized time format. Prefer RFC3339 formatting when submitting date times. https://datatracker.ietf.org/doc/html/rfc3339",
 				})
 			}
-			f.Elem().Set(reflect.ValueOf(val))
+			f.Set(reflect.ValueOf(val))
 		}
 	}
 

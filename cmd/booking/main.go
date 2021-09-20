@@ -16,9 +16,13 @@ import (
 	"github.com/openmesh/booking/ent"
 	"github.com/openmesh/booking/ent/migrate"
 	"github.com/openmesh/booking/http"
+	"github.com/openmesh/booking/metrics"
+	"github.com/openmesh/metrics"
 	"github.com/pelletier/go-toml"
 
+	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	logging "github.com/openmesh/booking/log"
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
 )
 
 // Build version, injected during build.
@@ -179,12 +183,33 @@ func (m *Main) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("failed creating schema resources: %v", err)
 	}
 
+	// Create dependencies used by service middlewares
 	var logger log.Logger
 	{
 		logger = log.NewLogfmtLogger(os.Stderr)
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
+
+	fieldKeys := []string{"method"}
+	requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		Namespace: "open_mesh",
+		Subsystem: "booking",
+		Name:      "request_count",
+		Help:      "Number of requests received.",
+	}, fieldKeys)
+	errorCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		Namespace: "open_mesh",
+		Subsystem: "booking",
+		Name:      "error_count",
+		Help:      "Number of errors occurred.",
+	}, fieldKeys)
+	requestDuration := kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+		Namespace: "open_mesh",
+		Subsystem: "booking",
+		Name:      "request_duration",
+		Help:      "Total duration of requests in microseconds",
+	}, fieldKeys)
 
 	// Instantiate ent-backed services.
 	// authService := ent.NewAuthService(m.Client)
@@ -193,11 +218,18 @@ func (m *Main) Run(ctx context.Context) (err error) {
 		resourceService = ent.NewResourceService(m.Client)
 		resourceService = booking.ResourceValidationMiddleware()(resourceService)
 		resourceService = logging.ResourceLoggingMiddleware(logger)(resourceService)
+		resourceService = metrics.ResourceMetricsMiddleware(requestCount, errorCount, requestDuration)(resourceService)
 	}
 	var organizationService booking.OrganizationService
 	{
 		organizationService = ent.NewOrganizationService(m.Client)
 		organizationService = logging.OrganizationLoggingMiddleware(logger)(organizationService)
+	}
+	var unavailabilityService booking.UnavailabilityService
+	{
+		unavailabilityService = ent.NewUnavailabilityService(m.Client)
+		unavailabilityService = logging.UnavailabilityLoggingMiddleware(logger)(unavailabilityService)
+		unavailabilityService = metrics.UnavailabilityMetricsMiddleware(requestCount, errorCount, requestDuration)(unavailabilityService)
 	}
 
 	// userService := sqlite.NewUserService(m.DB)
@@ -220,6 +252,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	// m.HTTPServer.AuthService = authService
 	m.HTTPServer.ResourceService = resourceService
 	m.HTTPServer.OrganizationService = organizationService
+	m.HTTPServer.UnavailabilityService = unavailabilityService
 	// m.HTTPServer.EventService = eventService
 	// m.HTTPServer.UserService = userService
 

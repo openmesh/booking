@@ -91,7 +91,7 @@ type ResourceService interface {
 
 // FindResourceByIDRequest represents a request used by ResourceService.FindResourceByID.
 type FindResourceByIDRequest struct {
-	ID int `json:"id"`
+	ID int `json:"id" source:"url"`
 }
 
 // Validate a FindResourceByIDRequest. Returns a ValidationError for each
@@ -119,16 +119,16 @@ func (r FindResourceByIDResponse) Error() error { return r.Err }
 // ResourceRequestHandler.HandleFindResourcesQuery.
 type FindResourcesRequest struct {
 	// Filtering fields.
-	ID          *int    `json:"id"`
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
+	ID          *int    `json:"id" source:"query"`
+	Name        *string `json:"name" source:"query"`
+	Description *string `json:"description" source:"query"`
 
 	// Restrict to subset of range.
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
+	Offset int `json:"offset" source:"offset"`
+	Limit  int `json:"limit" source:"limit"`
 
 	// Resource property to order by.
-	OrderBy *string `json:"orderBy"`
+	OrderBy *string `json:"orderBy" source:"orderBy"`
 }
 
 // Validate a FindResourcesRequest. Returns a ValidationError for each
@@ -164,13 +164,13 @@ func (r FindResourcesResponse) Error() error { return r.Err }
 
 // CreateResourceRequest represents a request used by ResourceService.CreateResource.
 type CreateResourceRequest struct {
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	Slots        []*Slot `json:"slots"`
-	Timezone     string  `json:"timezone"`
-	Password     string  `json:"password"`
-	Price        int     `json:"price"`
-	BookingPrice int     `json:"bookingPrice"`
+	Name         string  `json:"name" source:"json"`
+	Description  string  `json:"description" source:"json"`
+	Slots        []*Slot `json:"slots" source:"json"`
+	Timezone     string  `json:"timezone" source:"json"`
+	Password     string  `json:"password" source:"json"`
+	Price        int     `json:"price" source:"json"`
+	BookingPrice int     `json:"bookingPrice" source:"json"`
 }
 
 // Validate a CreateResourceRequest. Returns a ValidationError for each
@@ -208,14 +208,14 @@ func (r CreateResourceResponse) Error() error { return r.Err }
 
 // UpdateResourceByIDRequest represents a request used by ResourceService.UpdateResourceRequest.
 type UpdateResourceRequest struct {
-	ID           int     `json:"id"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	Timezone     string  `json:"timezone"`
-	Password     string  `json:"password"`
-	Price        int     `json:"price"`
-	BookingPrice int     `json:"bookingPrice"`
-	Slots        []*Slot `json:"slots"`
+	ID           int     `json:"id" source:"url"`
+	Name         string  `json:"name" source:"json"`
+	Description  string  `json:"description" source:"json"`
+	Timezone     string  `json:"timezone" source:"json"`
+	Password     string  `json:"password" source:"json"`
+	Price        int     `json:"price" source:"json"`
+	BookingPrice int     `json:"bookingPrice" source:"json"`
+	Slots        []*Slot `json:"slots" source:"json"`
 }
 
 // Validate an UpdateResourceRequest. Returns a ValidationError for each
@@ -256,7 +256,7 @@ func (r UpdateResourceResponse) Error() error { return r.Err }
 
 // DeleteResourceRequest represents a request used by ResourceService.DeleteResourceRequest.
 type DeleteResourceRequest struct {
-	ID int `json:"id"`
+	ID int `json:"id" source:"url"`
 }
 
 // Validate a DeleteResourceRequest. Returns a ValidationError for each

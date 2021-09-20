@@ -1,6 +1,9 @@
 package booking
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // Build version and comming SHA.
 var (
@@ -12,4 +15,6 @@ var (
 var ReportError = func(ctx context.Context, err error, args ...interface{}) {}
 
 // ReportPanic notifies an external service of panics. No-op by default.
-var ReportPanic = func(err interface{}) {}
+var ReportPanic = func(err interface{}) {
+	fmt.Println(err)
+}

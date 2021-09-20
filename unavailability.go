@@ -56,8 +56,8 @@ type UnavailabilityServiceMiddleware func(UnavailabilityService) UnavailabilityS
 
 // FindUnavailabilityByIDRequest represents a request used by UnavailabilityService.FindUnavailabilityByID.
 type FindUnavailabilityByIDRequest struct {
-	ID         int `json:"id"`
-	ResourceID int `json:"resourceId"`
+	ID         int `json:"id" source:"url"`
+	ResourceID int `json:"resourceId" source:"resourceId"`
 }
 
 // Validate a FindUnavailabilitiesRequest. Returns a ValidationError for each
@@ -85,17 +85,17 @@ func (r FindUnavailabilityByIDResponse) Error() error { return r.Err }
 // UnavailabilitiesService.FindUnavailabilities.
 type FindUnavailabilitiesRequest struct {
 	// Filtering fields.
-	ID         *int       `json:"id"`
-	ResourceID int        `json:"resourceId"`
-	From       *time.Time `json:"from"`
-	To         *time.Time `json:"to"`
+	ID         *int       `json:"id" source:"query"`
+	ResourceID int        `json:"resourceId" source:"query"`
+	From       *time.Time `json:"from" source:"query"`
+	To         *time.Time `json:"to" source:"query"`
 
 	// Restrict to subset of range.
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
+	Offset int `json:"offset" source:"query"`
+	Limit  int `json:"limit" source:"query"`
 
 	// Resource property to order by.
-	OrderBy *string `json:"orderBy"`
+	OrderBy *string `json:"orderBy" source:"query"`
 }
 
 // Validate a FindUnavailabilitiesRequest. Returns a ValidationError for each
@@ -137,9 +137,9 @@ func (r FindUnavailabilitiesResponse) Error() error { return r.Err }
 
 // CreateUnavailability represents a request used by UnavailabilityService.CreateUnavailability.
 type CreateUnavailabilityRequest struct {
-	ResourceID int       `json:"resourceId"`
-	StartTime  time.Time `json:"startTime"`
-	EndTime    time.Time `json:"endTime"`
+	ResourceID int       `json:"resourceId" source:"json"`
+	StartTime  time.Time `json:"startTime" source:"json"`
+	EndTime    time.Time `json:"endTime" source:"json"`
 }
 
 // Validate a CreateUnavailabilityRequest. Returns a ValidationError for each
@@ -167,10 +167,10 @@ func (r CreateUnavailabilityResponse) Error() error { return r.Err }
 
 // UpdateUnavailabilityRequest is a request used by UnavailabilityService.UpdateUnavailability.
 type UpdateUnavailabilityRequest struct {
-	ID         int       `json:"id"`
-	ResourceID int       `json:"resourceId"`
-	StartTime  time.Time `json:"startTime"`
-	EndTime    time.Time `json:"endTime"`
+	ID         int       `json:"id" source:"url"`
+	ResourceID int       `json:"resourceId" source:"json"`
+	StartTime  time.Time `json:"startTime" source:"startTime"`
+	EndTime    time.Time `json:"endTime" source:"endTime"`
 }
 
 // Validate an UpdateUnavailabilityRequest. Returns a ValidationError for each
@@ -201,8 +201,8 @@ func (r UpdateUnavailabilityResponse) Error() error { return r.Err }
 
 // DeleteUnavailabilityRequest represents a request used by UnavailabilityService.DeleteUnavailabilityRequest.
 type DeleteUnavailabilityRequest struct {
-	ID         int `json:"id"`
-	ResourceID int `json:"resourceId"`
+	ID         int `json:"id" source:"id"`
+	ResourceID int `json:"resourceId" source:"resourceId"`
 }
 
 // Validate a DeleteUnavailabilityRequest. Returns a ValidationError for each

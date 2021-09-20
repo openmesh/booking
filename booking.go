@@ -68,7 +68,7 @@ type BookingUpdate struct {
 
 // FindBookingByIDRequest represents a payload used by the FindBookingByID method of a BookingService
 type FindBookingByIDRequest struct {
-	ID int `json:"id"`
+	ID int `json:"id" source:"url"`
 }
 
 // Validate a FindBookingByID. Returns a ValidationError for each requirement that fails.
@@ -93,11 +93,11 @@ func (r FindBookingByIDResponse) Error() error { return r.Err }
 // FindBookingsRequest represents a payload used by the FindBookings method of a BookingService
 type FindBookingsRequest struct {
 	// Filtering fields.
-	ID             *int      `json:"id"`
-	ResourceID     *int      `json:"resourceId"`
-	Status         *string   `json:"status"`
-	StartTimeAfter time.Time `json:"startTimeAfter"`
-	EndTimeBefore  time.Time `json:"endTimeBefore"`
+	ID             *int      `json:"id" source:"query"`
+	ResourceID     *int      `json:"resourceId" source:"query"`
+	Status         *string   `json:"status" source:"query"`
+	StartTimeAfter time.Time `json:"startTimeAfter" source:"query"`
+	EndTimeBefore  time.Time `json:"endTimeBefore" source:"query"`
 
 	// Restrict to subset of range.
 	Offset int `json:"offset"`
@@ -126,18 +126,18 @@ func (r FindBookingsResponse) Error() error { return r.Err }
 // CreateBookingRequest represents a payload used by the CreateBooking method of a BookingService
 type CreateBookingRequest struct {
 	// The resource that the booking has been made for.
-	ResourceID int `json:"resourceId"`
+	ResourceID int `json:"resourceId" source:"json"`
 
 	// Generic information about the booking. Can include things like the
 	// customer's personal information.
-	Metadata map[string]string `json:"metadata"`
+	Metadata map[string]string `json:"metadata" source:"json"`
 
 	// The status of the booking.
-	Status string `json:"status"`
+	Status string `json:"status" source:"json"`
 
 	// Information about the time of the booking.
-	StartTime time.Time `json:"startTime"`
-	EndTime   time.Time `json:"endTime"`
+	StartTime time.Time `json:"startTime" source:"json"`
+	EndTime   time.Time `json:"endTime" source:"json"`
 }
 
 // Validate a CreateBooking. Returns a ValidationError for each requirement that fails.
@@ -157,12 +157,12 @@ func (r CreateBookingResponse) Error() error { return r.Err }
 
 // UpdateBookingRequest represents a payload used by the UpdateBooking method of a BookingService
 type UpdateBookingRequest struct {
-	ID         int               `json:"id"`
-	ResourceID int               `json:"resourceId"`
-	Metadata   map[string]string `json:"metadata"`
-	Status     string            `json:"status"`
-	StartTime  time.Time         `json:"startTime"`
-	EndTime    time.Time         `json:"endTime"`
+	ID         int               `json:"id" source:"url"`
+	ResourceID int               `json:"resourceId" source:"json"`
+	Metadata   map[string]string `json:"metadata" source:"json"`
+	Status     string            `json:"status" source:"json"`
+	StartTime  time.Time         `json:"startTime" source:"json"`
+	EndTime    time.Time         `json:"endTime" source:"json"`
 }
 
 // Validate a UpdateBooking. Returns a ValidationError for each requirement that fails.
@@ -182,7 +182,7 @@ func (r UpdateBookingResponse) Error() error { return r.Err }
 
 // DeleteBookingRequest represents a payload used by the DeleteBooking method of a BookingService
 type DeleteBookingRequest struct {
-	ID int `json:"id"`
+	ID int `json:"id" source:"url"`
 }
 
 // Validate a DeleteBooking. Returns a ValidationError for each requirement that fails.
