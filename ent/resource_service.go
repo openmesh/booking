@@ -103,7 +103,8 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 	}
 
 	// Create resource.
-	r, err := tx.Resource.Create().
+	r, err := tx.Resource.
+		Create().
 		SetBookingPrice(req.BookingPrice).
 		SetDescription(req.Description).
 		SetName(req.Name).
@@ -118,7 +119,8 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 
 	// Create slots for resource.
 	for _, s := range req.Slots {
-		slot, err := tx.Slot.Create().
+		slot, err := tx.Slot.
+			Create().
 			SetDay(s.Day).
 			SetEndTime(s.EndTime).
 			SetStartTime(s.StartTime).
@@ -135,10 +137,8 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 		return booking.CreateResourceResponse{Err: tx.Rollback()}
 	}
 
-	res := r.toModel()
-
 	return booking.CreateResourceResponse{
-		Resource: res,
+		Resource: r.toModel(),
 		Err:      tx.Commit(),
 	}
 }
@@ -148,6 +148,8 @@ func (s *resourceService) UpdateResource(ctx context.Context, req booking.Update
 	if err != nil {
 		return booking.UpdateResourceResponse{Err: err}
 	}
+
+	// TODO check for not found
 
 	organizationID := booking.OrganizationIDFromContext(ctx)
 	count, err := tx.Resource.Query().Where(resource.Name(req.Name), resource.OrganizationId(organizationID)).Count(ctx)

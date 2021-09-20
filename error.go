@@ -98,3 +98,12 @@ func WrapValidationErrors(errs []ValidationError) error {
 		Params: errs,
 	}
 }
+
+// WrapNotFoundError wraps a not
+func WrapNotFoundError(entity string) error {
+	return Error{
+		Code:   ENOTFOUND,
+		Detail: fmt.Sprintf("Specified %s could not be found", entity),
+		Title:  "Item not found",
+	}
+}
