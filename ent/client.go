@@ -11,6 +11,7 @@ import (
 
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/bookingmetadatum"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/resource"
@@ -32,6 +33,8 @@ type Client struct {
 	Auth *AuthClient
 	// Booking is the client for interacting with the Booking builders.
 	Booking *BookingClient
+	// BookingMetadatum is the client for interacting with the BookingMetadatum builders.
+	BookingMetadatum *BookingMetadatumClient
 	// Organization is the client for interacting with the Organization builders.
 	Organization *OrganizationClient
 	// OrganizationOwnership is the client for interacting with the OrganizationOwnership builders.
@@ -59,6 +62,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Auth = NewAuthClient(c.config)
 	c.Booking = NewBookingClient(c.config)
+	c.BookingMetadatum = NewBookingMetadatumClient(c.config)
 	c.Organization = NewOrganizationClient(c.config)
 	c.OrganizationOwnership = NewOrganizationOwnershipClient(c.config)
 	c.Resource = NewResourceClient(c.config)
@@ -100,6 +104,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:                cfg,
 		Auth:                  NewAuthClient(cfg),
 		Booking:               NewBookingClient(cfg),
+		BookingMetadatum:      NewBookingMetadatumClient(cfg),
 		Organization:          NewOrganizationClient(cfg),
 		OrganizationOwnership: NewOrganizationOwnershipClient(cfg),
 		Resource:              NewResourceClient(cfg),
@@ -126,6 +131,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:                cfg,
 		Auth:                  NewAuthClient(cfg),
 		Booking:               NewBookingClient(cfg),
+		BookingMetadatum:      NewBookingMetadatumClient(cfg),
 		Organization:          NewOrganizationClient(cfg),
 		OrganizationOwnership: NewOrganizationOwnershipClient(cfg),
 		Resource:              NewResourceClient(cfg),
@@ -163,6 +169,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Auth.Use(hooks...)
 	c.Booking.Use(hooks...)
+	c.BookingMetadatum.Use(hooks...)
 	c.Organization.Use(hooks...)
 	c.OrganizationOwnership.Use(hooks...)
 	c.Resource.Use(hooks...)
@@ -362,6 +369,22 @@ func (c *BookingClient) GetX(ctx context.Context, id int) *Booking {
 	return obj
 }
 
+// QueryMetadata queries the metadata edge of a Booking.
+func (c *BookingClient) QueryMetadata(b *Booking) *BookingMetadatumQuery {
+	query := &BookingMetadatumQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := b.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(booking.Table, booking.FieldID, id),
+			sqlgraph.To(bookingmetadatum.Table, bookingmetadatum.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, booking.MetadataTable, booking.MetadataColumn),
+		)
+		fromV = sqlgraph.Neighbors(b.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryResource queries the resource edge of a Booking.
 func (c *BookingClient) QueryResource(b *Booking) *ResourceQuery {
 	query := &ResourceQuery{config: c.config}
@@ -381,6 +404,112 @@ func (c *BookingClient) QueryResource(b *Booking) *ResourceQuery {
 // Hooks returns the client hooks.
 func (c *BookingClient) Hooks() []Hook {
 	return c.hooks.Booking
+}
+
+// BookingMetadatumClient is a client for the BookingMetadatum schema.
+type BookingMetadatumClient struct {
+	config
+}
+
+// NewBookingMetadatumClient returns a client for the BookingMetadatum from the given config.
+func NewBookingMetadatumClient(c config) *BookingMetadatumClient {
+	return &BookingMetadatumClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `bookingmetadatum.Hooks(f(g(h())))`.
+func (c *BookingMetadatumClient) Use(hooks ...Hook) {
+	c.hooks.BookingMetadatum = append(c.hooks.BookingMetadatum, hooks...)
+}
+
+// Create returns a create builder for BookingMetadatum.
+func (c *BookingMetadatumClient) Create() *BookingMetadatumCreate {
+	mutation := newBookingMetadatumMutation(c.config, OpCreate)
+	return &BookingMetadatumCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of BookingMetadatum entities.
+func (c *BookingMetadatumClient) CreateBulk(builders ...*BookingMetadatumCreate) *BookingMetadatumCreateBulk {
+	return &BookingMetadatumCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for BookingMetadatum.
+func (c *BookingMetadatumClient) Update() *BookingMetadatumUpdate {
+	mutation := newBookingMetadatumMutation(c.config, OpUpdate)
+	return &BookingMetadatumUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *BookingMetadatumClient) UpdateOne(bm *BookingMetadatum) *BookingMetadatumUpdateOne {
+	mutation := newBookingMetadatumMutation(c.config, OpUpdateOne, withBookingMetadatum(bm))
+	return &BookingMetadatumUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *BookingMetadatumClient) UpdateOneID(id int) *BookingMetadatumUpdateOne {
+	mutation := newBookingMetadatumMutation(c.config, OpUpdateOne, withBookingMetadatumID(id))
+	return &BookingMetadatumUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for BookingMetadatum.
+func (c *BookingMetadatumClient) Delete() *BookingMetadatumDelete {
+	mutation := newBookingMetadatumMutation(c.config, OpDelete)
+	return &BookingMetadatumDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *BookingMetadatumClient) DeleteOne(bm *BookingMetadatum) *BookingMetadatumDeleteOne {
+	return c.DeleteOneID(bm.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *BookingMetadatumClient) DeleteOneID(id int) *BookingMetadatumDeleteOne {
+	builder := c.Delete().Where(bookingmetadatum.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &BookingMetadatumDeleteOne{builder}
+}
+
+// Query returns a query builder for BookingMetadatum.
+func (c *BookingMetadatumClient) Query() *BookingMetadatumQuery {
+	return &BookingMetadatumQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a BookingMetadatum entity by its id.
+func (c *BookingMetadatumClient) Get(ctx context.Context, id int) (*BookingMetadatum, error) {
+	return c.Query().Where(bookingmetadatum.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *BookingMetadatumClient) GetX(ctx context.Context, id int) *BookingMetadatum {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryBooking queries the booking edge of a BookingMetadatum.
+func (c *BookingMetadatumClient) QueryBooking(bm *BookingMetadatum) *BookingQuery {
+	query := &BookingQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := bm.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(bookingmetadatum.Table, bookingmetadatum.FieldID, id),
+			sqlgraph.To(booking.Table, booking.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, bookingmetadatum.BookingTable, bookingmetadatum.BookingColumn),
+		)
+		fromV = sqlgraph.Neighbors(bm.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *BookingMetadatumClient) Hooks() []Hook {
+	return c.hooks.BookingMetadatum
 }
 
 // OrganizationClient is a client for the Organization schema.

@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/bookingmetadatum"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 )
@@ -59,6 +60,21 @@ func (bu *BookingUpdate) SetResourceId(i int) *BookingUpdate {
 	return bu
 }
 
+// AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by IDs.
+func (bu *BookingUpdate) AddMetadatumIDs(ids ...int) *BookingUpdate {
+	bu.mutation.AddMetadatumIDs(ids...)
+	return bu
+}
+
+// AddMetadata adds the "metadata" edges to the BookingMetadatum entity.
+func (bu *BookingUpdate) AddMetadata(b ...*BookingMetadatum) *BookingUpdate {
+	ids := make([]int, len(b))
+	for i := range b {
+		ids[i] = b[i].ID
+	}
+	return bu.AddMetadatumIDs(ids...)
+}
+
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
 func (bu *BookingUpdate) SetResourceID(id int) *BookingUpdate {
 	bu.mutation.SetResourceID(id)
@@ -73,6 +89,27 @@ func (bu *BookingUpdate) SetResource(r *Resource) *BookingUpdate {
 // Mutation returns the BookingMutation object of the builder.
 func (bu *BookingUpdate) Mutation() *BookingMutation {
 	return bu.mutation
+}
+
+// ClearMetadata clears all "metadata" edges to the BookingMetadatum entity.
+func (bu *BookingUpdate) ClearMetadata() *BookingUpdate {
+	bu.mutation.ClearMetadata()
+	return bu
+}
+
+// RemoveMetadatumIDs removes the "metadata" edge to BookingMetadatum entities by IDs.
+func (bu *BookingUpdate) RemoveMetadatumIDs(ids ...int) *BookingUpdate {
+	bu.mutation.RemoveMetadatumIDs(ids...)
+	return bu
+}
+
+// RemoveMetadata removes "metadata" edges to BookingMetadatum entities.
+func (bu *BookingUpdate) RemoveMetadata(b ...*BookingMetadatum) *BookingUpdate {
+	ids := make([]int, len(b))
+	for i := range b {
+		ids[i] = b[i].ID
+	}
+	return bu.RemoveMetadatumIDs(ids...)
 }
 
 // ClearResource clears the "resource" edge to the Resource entity.
@@ -204,6 +241,60 @@ func (bu *BookingUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: booking.FieldEndTime,
 		})
 	}
+	if bu.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   booking.MetadataTable,
+			Columns: []string{booking.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: bookingmetadatum.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := bu.mutation.RemovedMetadataIDs(); len(nodes) > 0 && !bu.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   booking.MetadataTable,
+			Columns: []string{booking.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: bookingmetadatum.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := bu.mutation.MetadataIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   booking.MetadataTable,
+			Columns: []string{booking.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: bookingmetadatum.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if bu.mutation.ResourceCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -288,6 +379,21 @@ func (buo *BookingUpdateOne) SetResourceId(i int) *BookingUpdateOne {
 	return buo
 }
 
+// AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by IDs.
+func (buo *BookingUpdateOne) AddMetadatumIDs(ids ...int) *BookingUpdateOne {
+	buo.mutation.AddMetadatumIDs(ids...)
+	return buo
+}
+
+// AddMetadata adds the "metadata" edges to the BookingMetadatum entity.
+func (buo *BookingUpdateOne) AddMetadata(b ...*BookingMetadatum) *BookingUpdateOne {
+	ids := make([]int, len(b))
+	for i := range b {
+		ids[i] = b[i].ID
+	}
+	return buo.AddMetadatumIDs(ids...)
+}
+
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
 func (buo *BookingUpdateOne) SetResourceID(id int) *BookingUpdateOne {
 	buo.mutation.SetResourceID(id)
@@ -302,6 +408,27 @@ func (buo *BookingUpdateOne) SetResource(r *Resource) *BookingUpdateOne {
 // Mutation returns the BookingMutation object of the builder.
 func (buo *BookingUpdateOne) Mutation() *BookingMutation {
 	return buo.mutation
+}
+
+// ClearMetadata clears all "metadata" edges to the BookingMetadatum entity.
+func (buo *BookingUpdateOne) ClearMetadata() *BookingUpdateOne {
+	buo.mutation.ClearMetadata()
+	return buo
+}
+
+// RemoveMetadatumIDs removes the "metadata" edge to BookingMetadatum entities by IDs.
+func (buo *BookingUpdateOne) RemoveMetadatumIDs(ids ...int) *BookingUpdateOne {
+	buo.mutation.RemoveMetadatumIDs(ids...)
+	return buo
+}
+
+// RemoveMetadata removes "metadata" edges to BookingMetadatum entities.
+func (buo *BookingUpdateOne) RemoveMetadata(b ...*BookingMetadatum) *BookingUpdateOne {
+	ids := make([]int, len(b))
+	for i := range b {
+		ids[i] = b[i].ID
+	}
+	return buo.RemoveMetadatumIDs(ids...)
 }
 
 // ClearResource clears the "resource" edge to the Resource entity.
@@ -456,6 +583,60 @@ func (buo *BookingUpdateOne) sqlSave(ctx context.Context) (_node *Booking, err e
 			Value:  value,
 			Column: booking.FieldEndTime,
 		})
+	}
+	if buo.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   booking.MetadataTable,
+			Columns: []string{booking.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: bookingmetadatum.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := buo.mutation.RemovedMetadataIDs(); len(nodes) > 0 && !buo.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   booking.MetadataTable,
+			Columns: []string{booking.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: bookingmetadatum.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := buo.mutation.MetadataIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   booking.MetadataTable,
+			Columns: []string{booking.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: bookingmetadatum.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if buo.mutation.ResourceCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -24,6 +24,7 @@ func (Booking) Fields() []ent.Field {
 // Edges of the Booking.
 func (Booking) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.To("metadata", BookingMetadatum.Type),
 		edge.From("resource", Resource.Type).
 			Ref("bookings").
 			Field("resourceId").

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/bookingmetadatum"
 	"github.com/openmesh/booking/ent/resource"
 )
 
@@ -71,6 +72,21 @@ func (bc *BookingCreate) SetEndTime(t time.Time) *BookingCreate {
 func (bc *BookingCreate) SetResourceId(i int) *BookingCreate {
 	bc.mutation.SetResourceId(i)
 	return bc
+}
+
+// AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by IDs.
+func (bc *BookingCreate) AddMetadatumIDs(ids ...int) *BookingCreate {
+	bc.mutation.AddMetadatumIDs(ids...)
+	return bc
+}
+
+// AddMetadata adds the "metadata" edges to the BookingMetadatum entity.
+func (bc *BookingCreate) AddMetadata(b ...*BookingMetadatum) *BookingCreate {
+	ids := make([]int, len(b))
+	for i := range b {
+		ids[i] = b[i].ID
+	}
+	return bc.AddMetadatumIDs(ids...)
 }
 
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
@@ -254,6 +270,25 @@ func (bc *BookingCreate) createSpec() (*Booking, *sqlgraph.CreateSpec) {
 			Column: booking.FieldEndTime,
 		})
 		_node.EndTime = value
+	}
+	if nodes := bc.mutation.MetadataIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   booking.MetadataTable,
+			Columns: []string{booking.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: bookingmetadatum.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := bc.mutation.ResourceIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

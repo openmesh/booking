@@ -93,11 +93,11 @@ func (r FindBookingByIDResponse) Error() error { return r.Err }
 // FindBookingsRequest represents a payload used by the FindBookings method of a BookingService
 type FindBookingsRequest struct {
 	// Filtering fields.
-	ID             *int      `json:"id" source:"query"`
-	ResourceID     *int      `json:"resourceId" source:"query"`
-	Status         *string   `json:"status" source:"query"`
-	StartTimeAfter time.Time `json:"startTimeAfter" source:"query"`
-	EndTimeBefore  time.Time `json:"endTimeBefore" source:"query"`
+	ID             *int       `json:"id" source:"query"`
+	ResourceID     *int       `json:"resourceId" source:"query"`
+	Status         *string    `json:"status" source:"query"`
+	StartTimeAfter *time.Time `json:"startTimeAfter" source:"query"`
+	EndTimeBefore  *time.Time `json:"endTimeBefore" source:"query"`
 
 	// Restrict to subset of range.
 	Offset int `json:"offset"`

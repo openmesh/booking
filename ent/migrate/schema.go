@@ -58,6 +58,27 @@ var (
 			},
 		},
 	}
+	// BookingMetadataColumns holds the columns for the "booking_metadata" table.
+	BookingMetadataColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "key", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString},
+		{Name: "booking_id", Type: field.TypeInt, Nullable: true},
+	}
+	// BookingMetadataTable holds the schema information for the "booking_metadata" table.
+	BookingMetadataTable = &schema.Table{
+		Name:       "booking_metadata",
+		Columns:    BookingMetadataColumns,
+		PrimaryKey: []*schema.Column{BookingMetadataColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "booking_metadata_bookings_metadata",
+				Columns:    []*schema.Column{BookingMetadataColumns[3]},
+				RefColumns: []*schema.Column{BookingsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// OrganizationsColumns holds the columns for the "organizations" table.
 	OrganizationsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -129,6 +150,7 @@ var (
 		{Name: "password", Type: field.TypeString},
 		{Name: "price", Type: field.TypeInt},
 		{Name: "booking_price", Type: field.TypeInt},
+		{Name: "quantity_available", Type: field.TypeInt},
 		{Name: "organization_id", Type: field.TypeInt, Nullable: true},
 	}
 	// ResourcesTable holds the schema information for the "resources" table.
@@ -139,7 +161,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "resources_organizations_resources",
-				Columns:    []*schema.Column{ResourcesColumns[9]},
+				Columns:    []*schema.Column{ResourcesColumns[10]},
 				RefColumns: []*schema.Column{OrganizationsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -218,6 +240,7 @@ var (
 	Tables = []*schema.Table{
 		AuthsTable,
 		BookingsTable,
+		BookingMetadataTable,
 		OrganizationsTable,
 		OrganizationOwnershipsTable,
 		ResourcesTable,
@@ -230,6 +253,7 @@ var (
 func init() {
 	AuthsTable.ForeignKeys[0].RefTable = UsersTable
 	BookingsTable.ForeignKeys[0].RefTable = ResourcesTable
+	BookingMetadataTable.ForeignKeys[0].RefTable = BookingsTable
 	OrganizationOwnershipsTable.ForeignKeys[0].RefTable = UsersTable
 	OrganizationOwnershipsTable.ForeignKeys[1].RefTable = OrganizationsTable
 	ResourcesTable.ForeignKeys[0].RefTable = OrganizationsTable

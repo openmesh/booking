@@ -16,6 +16,8 @@ type Tx struct {
 	Auth *AuthClient
 	// Booking is the client for interacting with the Booking builders.
 	Booking *BookingClient
+	// BookingMetadatum is the client for interacting with the BookingMetadatum builders.
+	BookingMetadatum *BookingMetadatumClient
 	// Organization is the client for interacting with the Organization builders.
 	Organization *OrganizationClient
 	// OrganizationOwnership is the client for interacting with the OrganizationOwnership builders.
@@ -165,6 +167,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Auth = NewAuthClient(tx.config)
 	tx.Booking = NewBookingClient(tx.config)
+	tx.BookingMetadatum = NewBookingMetadatumClient(tx.config)
 	tx.Organization = NewOrganizationClient(tx.config)
 	tx.OrganizationOwnership = NewOrganizationOwnershipClient(tx.config)
 	tx.Resource = NewResourceClient(tx.config)

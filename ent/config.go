@@ -26,6 +26,7 @@ type config struct {
 type hooks struct {
 	Auth                  []ent.Hook
 	Booking               []ent.Hook
+	BookingMetadatum      []ent.Hook
 	Organization          []ent.Hook
 	OrganizationOwnership []ent.Hook
 	Resource              []ent.Hook

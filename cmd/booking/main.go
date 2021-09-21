@@ -17,7 +17,6 @@ import (
 	"github.com/openmesh/booking/ent/migrate"
 	"github.com/openmesh/booking/http"
 	"github.com/openmesh/booking/metrics"
-	"github.com/openmesh/metrics"
 	"github.com/pelletier/go-toml"
 
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"

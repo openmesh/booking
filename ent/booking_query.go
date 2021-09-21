@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/bookingmetadatum"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 )
@@ -26,6 +28,7 @@ type BookingQuery struct {
 	fields     []string
 	predicates []predicate.Booking
 	// eager-loading edges.
+	withMetadata *BookingMetadatumQuery
 	withResource *ResourceQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -61,6 +64,28 @@ func (bq *BookingQuery) Unique(unique bool) *BookingQuery {
 func (bq *BookingQuery) Order(o ...OrderFunc) *BookingQuery {
 	bq.order = append(bq.order, o...)
 	return bq
+}
+
+// QueryMetadata chains the current query on the "metadata" edge.
+func (bq *BookingQuery) QueryMetadata() *BookingMetadatumQuery {
+	query := &BookingMetadatumQuery{config: bq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := bq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := bq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(booking.Table, booking.FieldID, selector),
+			sqlgraph.To(bookingmetadatum.Table, bookingmetadatum.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, booking.MetadataTable, booking.MetadataColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(bq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // QueryResource chains the current query on the "resource" edge.
@@ -266,11 +291,23 @@ func (bq *BookingQuery) Clone() *BookingQuery {
 		offset:       bq.offset,
 		order:        append([]OrderFunc{}, bq.order...),
 		predicates:   append([]predicate.Booking{}, bq.predicates...),
+		withMetadata: bq.withMetadata.Clone(),
 		withResource: bq.withResource.Clone(),
 		// clone intermediate query.
 		sql:  bq.sql.Clone(),
 		path: bq.path,
 	}
+}
+
+// WithMetadata tells the query-builder to eager-load the nodes that are connected to
+// the "metadata" edge. The optional arguments are used to configure the query builder of the edge.
+func (bq *BookingQuery) WithMetadata(opts ...func(*BookingMetadatumQuery)) *BookingQuery {
+	query := &BookingMetadatumQuery{config: bq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	bq.withMetadata = query
+	return bq
 }
 
 // WithResource tells the query-builder to eager-load the nodes that are connected to
@@ -349,7 +386,8 @@ func (bq *BookingQuery) sqlAll(ctx context.Context) ([]*Booking, error) {
 	var (
 		nodes       = []*Booking{}
 		_spec       = bq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
+			bq.withMetadata != nil,
 			bq.withResource != nil,
 		}
 	)
@@ -371,6 +409,31 @@ func (bq *BookingQuery) sqlAll(ctx context.Context) ([]*Booking, error) {
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
+	}
+
+	if query := bq.withMetadata; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Booking)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Metadata = []*BookingMetadatum{}
+		}
+		query.Where(predicate.BookingMetadatum(func(s *sql.Selector) {
+			s.Where(sql.InValues(booking.MetadataColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.BookingId
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "bookingId" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.Metadata = append(node.Edges.Metadata, n)
+		}
 	}
 
 	if query := bq.withResource; query != nil {

@@ -12,6 +12,9 @@ type Auth func(*sql.Selector)
 // Booking is the predicate function for booking builders.
 type Booking func(*sql.Selector)
 
+// BookingMetadatum is the predicate function for bookingmetadatum builders.
+type BookingMetadatum func(*sql.Selector)
+
 // Organization is the predicate function for organization builders.
 type Organization func(*sql.Selector)
 

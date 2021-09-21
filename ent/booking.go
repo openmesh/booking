@@ -36,17 +36,28 @@ type Booking struct {
 
 // BookingEdges holds the relations/edges for other nodes in the graph.
 type BookingEdges struct {
+	// Metadata holds the value of the metadata edge.
+	Metadata []*BookingMetadatum `json:"metadata,omitempty"`
 	// Resource holds the value of the resource edge.
 	Resource *Resource `json:"resource,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
+}
+
+// MetadataOrErr returns the Metadata value or an error if the edge
+// was not loaded in eager-loading.
+func (e BookingEdges) MetadataOrErr() ([]*BookingMetadatum, error) {
+	if e.loadedTypes[0] {
+		return e.Metadata, nil
+	}
+	return nil, &NotLoadedError{edge: "metadata"}
 }
 
 // ResourceOrErr returns the Resource value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e BookingEdges) ResourceOrErr() (*Resource, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		if e.Resource == nil {
 			// The edge resource was loaded in eager-loading,
 			// but was not found.
@@ -128,6 +139,11 @@ func (b *Booking) assignValues(columns []string, values []interface{}) error {
 		}
 	}
 	return nil
+}
+
+// QueryMetadata queries the "metadata" edge of the Booking entity.
+func (b *Booking) QueryMetadata() *BookingMetadatumQuery {
+	return (&BookingClient{config: b.config}).QueryMetadata(b)
 }
 
 // QueryResource queries the "resource" edge of the Booking entity.

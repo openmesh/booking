@@ -19,7 +19,10 @@ func NewResourceService(client *Client) *resourceService {
 	}
 }
 
-func (s *resourceService) FindResourceByID(ctx context.Context, req booking.FindResourceByIDRequest) booking.FindResourceByIDResponse {
+func (s *resourceService) FindResourceByID(
+	ctx context.Context,
+	req booking.FindResourceByIDRequest,
+) booking.FindResourceByIDResponse {
 	r, err := s.client.Resource.
 		Query().
 		Where(resource.ID(req.ID)).
@@ -79,7 +82,7 @@ func (s *resourceService) FindResources(ctx context.Context, req booking.FindRes
 }
 
 func (s *resourceService) CreateResource(ctx context.Context, req booking.CreateResourceRequest) booking.CreateResourceResponse {
-	organizationID := booking.OrganizationIDFromContext(ctx)
+	orgID := booking.OrganizationIDFromContext(ctx)
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
@@ -87,7 +90,7 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 	}
 
 	// Check for existing resource with same name.
-	count, err := tx.Resource.Query().Where(resource.Name(req.Name), resource.OrganizationId(organizationID)).Count(ctx)
+	count, err := tx.Resource.Query().Where(resource.Name(req.Name), resource.OrganizationId(orgID)).Count(ctx)
 	if err != nil {
 		return booking.CreateResourceResponse{Err: err}
 	}
@@ -108,7 +111,7 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 		SetBookingPrice(req.BookingPrice).
 		SetDescription(req.Description).
 		SetName(req.Name).
-		SetOrganizationID(organizationID).
+		SetOrganizationID(orgID).
 		SetPassword(req.Password).
 		SetPrice(req.Price).
 		SetTimezone(req.Timezone).
@@ -281,6 +284,14 @@ func (r *Resource) toModel() *booking.Resource {
 	return result
 }
 
+func (r Resources) toModels() []*booking.Resource {
+	var resources []*booking.Resource
+	for _, v := range r {
+		resources = append(resources, v.toModel())
+	}
+	return resources
+}
+
 func (s *Slot) toModel() *booking.Slot {
 	return &booking.Slot{
 		Day:       s.Day,
@@ -288,12 +299,4 @@ func (s *Slot) toModel() *booking.Slot {
 		EndTime:   s.EndTime,
 		Quantity:  s.Quantity,
 	}
-}
-
-func (r Resources) toModels() []*booking.Resource {
-	var resources []*booking.Resource
-	for _, v := range r {
-		resources = append(resources, v.toModel())
-	}
-	return resources
 }

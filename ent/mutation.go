@@ -10,6 +10,7 @@ import (
 
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/bookingmetadatum"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/predicate"
@@ -32,6 +33,7 @@ const (
 	// Node types.
 	TypeAuth                  = "Auth"
 	TypeBooking               = "Booking"
+	TypeBookingMetadatum      = "BookingMetadatum"
 	TypeOrganization          = "Organization"
 	TypeOrganizationOwnership = "OrganizationOwnership"
 	TypeResource              = "Resource"
@@ -853,6 +855,9 @@ type BookingMutation struct {
 	startTime       *time.Time
 	endTime         *time.Time
 	clearedFields   map[string]struct{}
+	metadata        map[int]struct{}
+	removedmetadata map[int]struct{}
+	clearedmetadata bool
 	resource        *int
 	clearedresource bool
 	done            bool
@@ -1155,6 +1160,60 @@ func (m *BookingMutation) ResetResourceId() {
 	m.resource = nil
 }
 
+// AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by ids.
+func (m *BookingMutation) AddMetadatumIDs(ids ...int) {
+	if m.metadata == nil {
+		m.metadata = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.metadata[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMetadata clears the "metadata" edge to the BookingMetadatum entity.
+func (m *BookingMutation) ClearMetadata() {
+	m.clearedmetadata = true
+}
+
+// MetadataCleared reports if the "metadata" edge to the BookingMetadatum entity was cleared.
+func (m *BookingMutation) MetadataCleared() bool {
+	return m.clearedmetadata
+}
+
+// RemoveMetadatumIDs removes the "metadata" edge to the BookingMetadatum entity by IDs.
+func (m *BookingMutation) RemoveMetadatumIDs(ids ...int) {
+	if m.removedmetadata == nil {
+		m.removedmetadata = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.metadata, ids[i])
+		m.removedmetadata[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMetadata returns the removed IDs of the "metadata" edge to the BookingMetadatum entity.
+func (m *BookingMutation) RemovedMetadataIDs() (ids []int) {
+	for id := range m.removedmetadata {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MetadataIDs returns the "metadata" edge IDs in the mutation.
+func (m *BookingMutation) MetadataIDs() (ids []int) {
+	for id := range m.metadata {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMetadata resets all changes to the "metadata" edge.
+func (m *BookingMutation) ResetMetadata() {
+	m.metadata = nil
+	m.clearedmetadata = false
+	m.removedmetadata = nil
+}
+
 // SetResourceID sets the "resource" edge to the Resource entity by id.
 func (m *BookingMutation) SetResourceID(id int) {
 	m.resource = &id
@@ -1400,7 +1459,10 @@ func (m *BookingMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *BookingMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.metadata != nil {
+		edges = append(edges, booking.EdgeMetadata)
+	}
 	if m.resource != nil {
 		edges = append(edges, booking.EdgeResource)
 	}
@@ -1411,6 +1473,12 @@ func (m *BookingMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *BookingMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case booking.EdgeMetadata:
+		ids := make([]ent.Value, 0, len(m.metadata))
+		for id := range m.metadata {
+			ids = append(ids, id)
+		}
+		return ids
 	case booking.EdgeResource:
 		if id := m.resource; id != nil {
 			return []ent.Value{*id}
@@ -1421,7 +1489,10 @@ func (m *BookingMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *BookingMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedmetadata != nil {
+		edges = append(edges, booking.EdgeMetadata)
+	}
 	return edges
 }
 
@@ -1429,13 +1500,22 @@ func (m *BookingMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *BookingMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
+	case booking.EdgeMetadata:
+		ids := make([]ent.Value, 0, len(m.removedmetadata))
+		for id := range m.removedmetadata {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *BookingMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.clearedmetadata {
+		edges = append(edges, booking.EdgeMetadata)
+	}
 	if m.clearedresource {
 		edges = append(edges, booking.EdgeResource)
 	}
@@ -1446,6 +1526,8 @@ func (m *BookingMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *BookingMutation) EdgeCleared(name string) bool {
 	switch name {
+	case booking.EdgeMetadata:
+		return m.clearedmetadata
 	case booking.EdgeResource:
 		return m.clearedresource
 	}
@@ -1467,11 +1549,485 @@ func (m *BookingMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *BookingMutation) ResetEdge(name string) error {
 	switch name {
+	case booking.EdgeMetadata:
+		m.ResetMetadata()
+		return nil
 	case booking.EdgeResource:
 		m.ResetResource()
 		return nil
 	}
 	return fmt.Errorf("unknown Booking edge %s", name)
+}
+
+// BookingMetadatumMutation represents an operation that mutates the BookingMetadatum nodes in the graph.
+type BookingMetadatumMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	key            *string
+	value          *string
+	clearedFields  map[string]struct{}
+	booking        *int
+	clearedbooking bool
+	done           bool
+	oldValue       func(context.Context) (*BookingMetadatum, error)
+	predicates     []predicate.BookingMetadatum
+}
+
+var _ ent.Mutation = (*BookingMetadatumMutation)(nil)
+
+// bookingmetadatumOption allows management of the mutation configuration using functional options.
+type bookingmetadatumOption func(*BookingMetadatumMutation)
+
+// newBookingMetadatumMutation creates new mutation for the BookingMetadatum entity.
+func newBookingMetadatumMutation(c config, op Op, opts ...bookingmetadatumOption) *BookingMetadatumMutation {
+	m := &BookingMetadatumMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeBookingMetadatum,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withBookingMetadatumID sets the ID field of the mutation.
+func withBookingMetadatumID(id int) bookingmetadatumOption {
+	return func(m *BookingMetadatumMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *BookingMetadatum
+		)
+		m.oldValue = func(ctx context.Context) (*BookingMetadatum, error) {
+			once.Do(func() {
+				if m.done {
+					err = fmt.Errorf("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().BookingMetadatum.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withBookingMetadatum sets the old BookingMetadatum of the mutation.
+func withBookingMetadatum(node *BookingMetadatum) bookingmetadatumOption {
+	return func(m *BookingMetadatumMutation) {
+		m.oldValue = func(context.Context) (*BookingMetadatum, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m BookingMetadatumMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m BookingMetadatumMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, fmt.Errorf("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *BookingMetadatumMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// SetKey sets the "key" field.
+func (m *BookingMetadatumMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *BookingMetadatumMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the BookingMetadatum entity.
+// If the BookingMetadatum object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BookingMetadatumMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *BookingMetadatumMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetValue sets the "value" field.
+func (m *BookingMetadatumMutation) SetValue(s string) {
+	m.value = &s
+}
+
+// Value returns the value of the "value" field in the mutation.
+func (m *BookingMetadatumMutation) Value() (r string, exists bool) {
+	v := m.value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldValue returns the old "value" field's value of the BookingMetadatum entity.
+// If the BookingMetadatum object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BookingMetadatumMutation) OldValue(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldValue is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldValue requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValue: %w", err)
+	}
+	return oldValue.Value, nil
+}
+
+// ResetValue resets all changes to the "value" field.
+func (m *BookingMetadatumMutation) ResetValue() {
+	m.value = nil
+}
+
+// SetBookingId sets the "bookingId" field.
+func (m *BookingMetadatumMutation) SetBookingId(i int) {
+	m.booking = &i
+}
+
+// BookingId returns the value of the "bookingId" field in the mutation.
+func (m *BookingMetadatumMutation) BookingId() (r int, exists bool) {
+	v := m.booking
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBookingId returns the old "bookingId" field's value of the BookingMetadatum entity.
+// If the BookingMetadatum object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BookingMetadatumMutation) OldBookingId(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldBookingId is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldBookingId requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBookingId: %w", err)
+	}
+	return oldValue.BookingId, nil
+}
+
+// ResetBookingId resets all changes to the "bookingId" field.
+func (m *BookingMetadatumMutation) ResetBookingId() {
+	m.booking = nil
+}
+
+// SetBookingID sets the "booking" edge to the Booking entity by id.
+func (m *BookingMetadatumMutation) SetBookingID(id int) {
+	m.booking = &id
+}
+
+// ClearBooking clears the "booking" edge to the Booking entity.
+func (m *BookingMetadatumMutation) ClearBooking() {
+	m.clearedbooking = true
+}
+
+// BookingCleared reports if the "booking" edge to the Booking entity was cleared.
+func (m *BookingMetadatumMutation) BookingCleared() bool {
+	return m.clearedbooking
+}
+
+// BookingID returns the "booking" edge ID in the mutation.
+func (m *BookingMetadatumMutation) BookingID() (id int, exists bool) {
+	if m.booking != nil {
+		return *m.booking, true
+	}
+	return
+}
+
+// BookingIDs returns the "booking" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// BookingID instead. It exists only for internal usage by the builders.
+func (m *BookingMetadatumMutation) BookingIDs() (ids []int) {
+	if id := m.booking; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetBooking resets all changes to the "booking" edge.
+func (m *BookingMetadatumMutation) ResetBooking() {
+	m.booking = nil
+	m.clearedbooking = false
+}
+
+// Where appends a list predicates to the BookingMetadatumMutation builder.
+func (m *BookingMetadatumMutation) Where(ps ...predicate.BookingMetadatum) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// Op returns the operation name.
+func (m *BookingMetadatumMutation) Op() Op {
+	return m.op
+}
+
+// Type returns the node type of this mutation (BookingMetadatum).
+func (m *BookingMetadatumMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *BookingMetadatumMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.key != nil {
+		fields = append(fields, bookingmetadatum.FieldKey)
+	}
+	if m.value != nil {
+		fields = append(fields, bookingmetadatum.FieldValue)
+	}
+	if m.booking != nil {
+		fields = append(fields, bookingmetadatum.FieldBookingId)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *BookingMetadatumMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case bookingmetadatum.FieldKey:
+		return m.Key()
+	case bookingmetadatum.FieldValue:
+		return m.Value()
+	case bookingmetadatum.FieldBookingId:
+		return m.BookingId()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *BookingMetadatumMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case bookingmetadatum.FieldKey:
+		return m.OldKey(ctx)
+	case bookingmetadatum.FieldValue:
+		return m.OldValue(ctx)
+	case bookingmetadatum.FieldBookingId:
+		return m.OldBookingId(ctx)
+	}
+	return nil, fmt.Errorf("unknown BookingMetadatum field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BookingMetadatumMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case bookingmetadatum.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case bookingmetadatum.FieldValue:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetValue(v)
+		return nil
+	case bookingmetadatum.FieldBookingId:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBookingId(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BookingMetadatum field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *BookingMetadatumMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *BookingMetadatumMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BookingMetadatumMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown BookingMetadatum numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *BookingMetadatumMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *BookingMetadatumMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *BookingMetadatumMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown BookingMetadatum nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *BookingMetadatumMutation) ResetField(name string) error {
+	switch name {
+	case bookingmetadatum.FieldKey:
+		m.ResetKey()
+		return nil
+	case bookingmetadatum.FieldValue:
+		m.ResetValue()
+		return nil
+	case bookingmetadatum.FieldBookingId:
+		m.ResetBookingId()
+		return nil
+	}
+	return fmt.Errorf("unknown BookingMetadatum field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *BookingMetadatumMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.booking != nil {
+		edges = append(edges, bookingmetadatum.EdgeBooking)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *BookingMetadatumMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case bookingmetadatum.EdgeBooking:
+		if id := m.booking; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *BookingMetadatumMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *BookingMetadatumMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *BookingMetadatumMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedbooking {
+		edges = append(edges, bookingmetadatum.EdgeBooking)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *BookingMetadatumMutation) EdgeCleared(name string) bool {
+	switch name {
+	case bookingmetadatum.EdgeBooking:
+		return m.clearedbooking
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *BookingMetadatumMutation) ClearEdge(name string) error {
+	switch name {
+	case bookingmetadatum.EdgeBooking:
+		m.ClearBooking()
+		return nil
+	}
+	return fmt.Errorf("unknown BookingMetadatum unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *BookingMetadatumMutation) ResetEdge(name string) error {
+	switch name {
+	case bookingmetadatum.EdgeBooking:
+		m.ResetBooking()
+		return nil
+	}
+	return fmt.Errorf("unknown BookingMetadatum edge %s", name)
 }
 
 // OrganizationMutation represents an operation that mutates the Organization nodes in the graph.
@@ -2649,6 +3205,8 @@ type ResourceMutation struct {
 	addprice                *int
 	bookingPrice            *int
 	addbookingPrice         *int
+	quantityAvailable       *int
+	addquantityAvailable    *int
 	clearedFields           map[string]struct{}
 	slots                   map[int]struct{}
 	removedslots            map[int]struct{}
@@ -3109,6 +3667,62 @@ func (m *ResourceMutation) ResetOrganizationId() {
 	m.organization = nil
 }
 
+// SetQuantityAvailable sets the "quantityAvailable" field.
+func (m *ResourceMutation) SetQuantityAvailable(i int) {
+	m.quantityAvailable = &i
+	m.addquantityAvailable = nil
+}
+
+// QuantityAvailable returns the value of the "quantityAvailable" field in the mutation.
+func (m *ResourceMutation) QuantityAvailable() (r int, exists bool) {
+	v := m.quantityAvailable
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuantityAvailable returns the old "quantityAvailable" field's value of the Resource entity.
+// If the Resource object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ResourceMutation) OldQuantityAvailable(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldQuantityAvailable is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldQuantityAvailable requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuantityAvailable: %w", err)
+	}
+	return oldValue.QuantityAvailable, nil
+}
+
+// AddQuantityAvailable adds i to the "quantityAvailable" field.
+func (m *ResourceMutation) AddQuantityAvailable(i int) {
+	if m.addquantityAvailable != nil {
+		*m.addquantityAvailable += i
+	} else {
+		m.addquantityAvailable = &i
+	}
+}
+
+// AddedQuantityAvailable returns the value that was added to the "quantityAvailable" field in this mutation.
+func (m *ResourceMutation) AddedQuantityAvailable() (r int, exists bool) {
+	v := m.addquantityAvailable
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetQuantityAvailable resets all changes to the "quantityAvailable" field.
+func (m *ResourceMutation) ResetQuantityAvailable() {
+	m.quantityAvailable = nil
+	m.addquantityAvailable = nil
+}
+
 // AddSlotIDs adds the "slots" edge to the Slot entity by ids.
 func (m *ResourceMutation) AddSlotIDs(ids ...int) {
 	if m.slots == nil {
@@ -3329,7 +3943,7 @@ func (m *ResourceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ResourceMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.createdAt != nil {
 		fields = append(fields, resource.FieldCreatedAt)
 	}
@@ -3357,6 +3971,9 @@ func (m *ResourceMutation) Fields() []string {
 	if m.organization != nil {
 		fields = append(fields, resource.FieldOrganizationId)
 	}
+	if m.quantityAvailable != nil {
+		fields = append(fields, resource.FieldQuantityAvailable)
+	}
 	return fields
 }
 
@@ -3383,6 +4000,8 @@ func (m *ResourceMutation) Field(name string) (ent.Value, bool) {
 		return m.BookingPrice()
 	case resource.FieldOrganizationId:
 		return m.OrganizationId()
+	case resource.FieldQuantityAvailable:
+		return m.QuantityAvailable()
 	}
 	return nil, false
 }
@@ -3410,6 +4029,8 @@ func (m *ResourceMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldBookingPrice(ctx)
 	case resource.FieldOrganizationId:
 		return m.OldOrganizationId(ctx)
+	case resource.FieldQuantityAvailable:
+		return m.OldQuantityAvailable(ctx)
 	}
 	return nil, fmt.Errorf("unknown Resource field %s", name)
 }
@@ -3482,6 +4103,13 @@ func (m *ResourceMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetOrganizationId(v)
 		return nil
+	case resource.FieldQuantityAvailable:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuantityAvailable(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Resource field %s", name)
 }
@@ -3496,6 +4124,9 @@ func (m *ResourceMutation) AddedFields() []string {
 	if m.addbookingPrice != nil {
 		fields = append(fields, resource.FieldBookingPrice)
 	}
+	if m.addquantityAvailable != nil {
+		fields = append(fields, resource.FieldQuantityAvailable)
+	}
 	return fields
 }
 
@@ -3508,6 +4139,8 @@ func (m *ResourceMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedPrice()
 	case resource.FieldBookingPrice:
 		return m.AddedBookingPrice()
+	case resource.FieldQuantityAvailable:
+		return m.AddedQuantityAvailable()
 	}
 	return nil, false
 }
@@ -3530,6 +4163,13 @@ func (m *ResourceMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddBookingPrice(v)
+		return nil
+	case resource.FieldQuantityAvailable:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddQuantityAvailable(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Resource numeric field %s", name)
@@ -3584,6 +4224,9 @@ func (m *ResourceMutation) ResetField(name string) error {
 		return nil
 	case resource.FieldOrganizationId:
 		m.ResetOrganizationId()
+		return nil
+	case resource.FieldQuantityAvailable:
+		m.ResetQuantityAvailable()
 		return nil
 	}
 	return fmt.Errorf("unknown Resource field %s", name)

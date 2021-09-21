@@ -148,7 +148,7 @@ func (s *unavailabilityService) CreateUnavailability(
 				unavailability.And(unavailability.StartTimeLTE(req.EndTime), unavailability.EndTimeGTE(req.EndTime)),
 				// New unavailability is entirely during an existing unavailability
 				unavailability.And(unavailability.StartTimeLTE(req.StartTime), unavailability.EndTimeGTE(req.EndTime)),
-				// Existing unavailability is entirely during an existing unavailability
+				// Existing unavailability is entirely during new unavailability
 				unavailability.And(unavailability.StartTimeGTE(req.StartTime), unavailability.EndTimeLTE(req.EndTime)),
 			),
 		).

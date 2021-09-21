@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/bookingmetadatum"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/resource"
@@ -38,6 +39,7 @@ func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
 		auth.Table:                  auth.ValidColumn,
 		booking.Table:               booking.ValidColumn,
+		bookingmetadatum.Table:      bookingmetadatum.ValidColumn,
 		organization.Table:          organization.ValidColumn,
 		organizationownership.Table: organizationownership.ValidColumn,
 		resource.Table:              resource.ValidColumn,

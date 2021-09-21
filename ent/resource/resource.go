@@ -29,6 +29,8 @@ const (
 	FieldBookingPrice = "booking_price"
 	// FieldOrganizationId holds the string denoting the organizationid field in the database.
 	FieldOrganizationId = "organization_id"
+	// FieldQuantityAvailable holds the string denoting the quantityavailable field in the database.
+	FieldQuantityAvailable = "quantity_available"
 	// EdgeSlots holds the string denoting the slots edge name in mutations.
 	EdgeSlots = "slots"
 	// EdgeBookings holds the string denoting the bookings edge name in mutations.
@@ -81,6 +83,7 @@ var Columns = []string{
 	FieldPrice,
 	FieldBookingPrice,
 	FieldOrganizationId,
+	FieldQuantityAvailable,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

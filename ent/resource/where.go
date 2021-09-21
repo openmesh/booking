@@ -156,6 +156,13 @@ func OrganizationId(v int) predicate.Resource {
 	})
 }
 
+// QuantityAvailable applies equality check predicate on the "quantityAvailable" field. It's identical to QuantityAvailableEQ.
+func QuantityAvailable(v int) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldQuantityAvailable), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "createdAt" field.
 func CreatedAtEQ(v time.Time) predicate.Resource {
 	return predicate.Resource(func(s *sql.Selector) {
@@ -949,6 +956,82 @@ func OrganizationIdNotIn(vs ...int) predicate.Resource {
 			return
 		}
 		s.Where(sql.NotIn(s.C(FieldOrganizationId), v...))
+	})
+}
+
+// QuantityAvailableEQ applies the EQ predicate on the "quantityAvailable" field.
+func QuantityAvailableEQ(v int) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldQuantityAvailable), v))
+	})
+}
+
+// QuantityAvailableNEQ applies the NEQ predicate on the "quantityAvailable" field.
+func QuantityAvailableNEQ(v int) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldQuantityAvailable), v))
+	})
+}
+
+// QuantityAvailableIn applies the In predicate on the "quantityAvailable" field.
+func QuantityAvailableIn(vs ...int) predicate.Resource {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Resource(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldQuantityAvailable), v...))
+	})
+}
+
+// QuantityAvailableNotIn applies the NotIn predicate on the "quantityAvailable" field.
+func QuantityAvailableNotIn(vs ...int) predicate.Resource {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Resource(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldQuantityAvailable), v...))
+	})
+}
+
+// QuantityAvailableGT applies the GT predicate on the "quantityAvailable" field.
+func QuantityAvailableGT(v int) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldQuantityAvailable), v))
+	})
+}
+
+// QuantityAvailableGTE applies the GTE predicate on the "quantityAvailable" field.
+func QuantityAvailableGTE(v int) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldQuantityAvailable), v))
+	})
+}
+
+// QuantityAvailableLT applies the LT predicate on the "quantityAvailable" field.
+func QuantityAvailableLT(v int) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldQuantityAvailable), v))
+	})
+}
+
+// QuantityAvailableLTE applies the LTE predicate on the "quantityAvailable" field.
+func QuantityAvailableLTE(v int) predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldQuantityAvailable), v))
 	})
 }
 

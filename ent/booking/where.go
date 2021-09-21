@@ -598,6 +598,34 @@ func ResourceIdNotIn(vs ...int) predicate.Booking {
 	})
 }
 
+// HasMetadata applies the HasEdge predicate on the "metadata" edge.
+func HasMetadata() predicate.Booking {
+	return predicate.Booking(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MetadataTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MetadataTable, MetadataColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMetadataWith applies the HasEdge predicate on the "metadata" edge with a given conditions (other predicates).
+func HasMetadataWith(preds ...predicate.BookingMetadatum) predicate.Booking {
+	return predicate.Booking(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MetadataInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MetadataTable, MetadataColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasResource applies the HasEdge predicate on the "resource" edge.
 func HasResource() predicate.Booking {
 	return predicate.Booking(func(s *sql.Selector) {

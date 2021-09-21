@@ -34,7 +34,9 @@ type Resource struct {
 	// BookingPrice holds the value of the "bookingPrice" field.
 	BookingPrice int `json:"bookingPrice,omitempty"`
 	// OrganizationId holds the value of the "organizationId" field.
-	OrganizationId int `json:"organizationId,omitempty" OrganizationID`
+	OrganizationId int `json:"organizationId,omitempty"`
+	// QuantityAvailable holds the value of the "quantityAvailable" field.
+	QuantityAvailable int `json:"quantityAvailable,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ResourceQuery when eager-loading is set.
 	Edges ResourceEdges `json:"edges"`
@@ -101,7 +103,7 @@ func (*Resource) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case resource.FieldID, resource.FieldPrice, resource.FieldBookingPrice, resource.FieldOrganizationId:
+		case resource.FieldID, resource.FieldPrice, resource.FieldBookingPrice, resource.FieldOrganizationId, resource.FieldQuantityAvailable:
 			values[i] = new(sql.NullInt64)
 		case resource.FieldName, resource.FieldDescription, resource.FieldTimezone, resource.FieldPassword:
 			values[i] = new(sql.NullString)
@@ -182,6 +184,12 @@ func (r *Resource) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				r.OrganizationId = int(value.Int64)
 			}
+		case resource.FieldQuantityAvailable:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field quantityAvailable", values[i])
+			} else if value.Valid {
+				r.QuantityAvailable = int(value.Int64)
+			}
 		}
 	}
 	return nil
@@ -248,6 +256,8 @@ func (r *Resource) String() string {
 	builder.WriteString(fmt.Sprintf("%v", r.BookingPrice))
 	builder.WriteString(", organizationId=")
 	builder.WriteString(fmt.Sprintf("%v", r.OrganizationId))
+	builder.WriteString(", quantityAvailable=")
+	builder.WriteString(fmt.Sprintf("%v", r.QuantityAvailable))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -94,6 +94,19 @@ func (ru *ResourceUpdate) SetOrganizationId(i int) *ResourceUpdate {
 	return ru
 }
 
+// SetQuantityAvailable sets the "quantityAvailable" field.
+func (ru *ResourceUpdate) SetQuantityAvailable(i int) *ResourceUpdate {
+	ru.mutation.ResetQuantityAvailable()
+	ru.mutation.SetQuantityAvailable(i)
+	return ru
+}
+
+// AddQuantityAvailable adds i to the "quantityAvailable" field.
+func (ru *ResourceUpdate) AddQuantityAvailable(i int) *ResourceUpdate {
+	ru.mutation.AddQuantityAvailable(i)
+	return ru
+}
+
 // AddSlotIDs adds the "slots" edge to the Slot entity by IDs.
 func (ru *ResourceUpdate) AddSlotIDs(ids ...int) *ResourceUpdate {
 	ru.mutation.AddSlotIDs(ids...)
@@ -382,6 +395,20 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: resource.FieldBookingPrice,
 		})
 	}
+	if value, ok := ru.mutation.QuantityAvailable(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: resource.FieldQuantityAvailable,
+		})
+	}
+	if value, ok := ru.mutation.AddedQuantityAvailable(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: resource.FieldQuantityAvailable,
+		})
+	}
 	if ru.mutation.SlotsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -657,6 +684,19 @@ func (ruo *ResourceUpdateOne) AddBookingPrice(i int) *ResourceUpdateOne {
 // SetOrganizationId sets the "organizationId" field.
 func (ruo *ResourceUpdateOne) SetOrganizationId(i int) *ResourceUpdateOne {
 	ruo.mutation.SetOrganizationId(i)
+	return ruo
+}
+
+// SetQuantityAvailable sets the "quantityAvailable" field.
+func (ruo *ResourceUpdateOne) SetQuantityAvailable(i int) *ResourceUpdateOne {
+	ruo.mutation.ResetQuantityAvailable()
+	ruo.mutation.SetQuantityAvailable(i)
+	return ruo
+}
+
+// AddQuantityAvailable adds i to the "quantityAvailable" field.
+func (ruo *ResourceUpdateOne) AddQuantityAvailable(i int) *ResourceUpdateOne {
+	ruo.mutation.AddQuantityAvailable(i)
 	return ruo
 }
 
@@ -970,6 +1010,20 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 			Type:   field.TypeInt,
 			Value:  value,
 			Column: resource.FieldBookingPrice,
+		})
+	}
+	if value, ok := ruo.mutation.QuantityAvailable(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: resource.FieldQuantityAvailable,
+		})
+	}
+	if value, ok := ruo.mutation.AddedQuantityAvailable(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Value:  value,
+			Column: resource.FieldQuantityAvailable,
 		})
 	}
 	if ruo.mutation.SlotsCleared() {
