@@ -230,6 +230,9 @@ func decodeHTTPRequest(r *http.Request, v interface{}) error {
 		default:
 			return fmt.Errorf("failed to decode http request: invalid source tag on property '%s'", t.Field(i).Name)
 		}
+		if str == "" {
+			continue
+		}
 		switch fi.(type) {
 		case string:
 			f.Set(reflect.ValueOf(str))

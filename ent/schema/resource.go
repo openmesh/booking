@@ -21,7 +21,9 @@ func (Resource) Fields() []ent.Field {
 		field.Int("price"),
 		field.Int("bookingPrice"),
 		field.Int("organizationId"),
-		field.Int("quantityAvailable"),
+		field.Int("quantityAvailable").
+			Optional().
+			Nillable(),
 	}
 }
 

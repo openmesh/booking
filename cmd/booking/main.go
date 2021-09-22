@@ -219,6 +219,13 @@ func (m *Main) Run(ctx context.Context) (err error) {
 		resourceService = logging.ResourceLoggingMiddleware(logger)(resourceService)
 		resourceService = metrics.ResourceMetricsMiddleware(requestCount, errorCount, requestDuration)(resourceService)
 	}
+	var bookingService booking.BookingService
+	{
+		bookingService = ent.NewBookingService(m.Client)
+		bookingService = booking.BookingValidationMiddleware()(bookingService)
+		bookingService = logging.BookingLoggingMiddleware(logger)(bookingService)
+		bookingService = metrics.BookingMetricsMiddleware(requestCount, errorCount, requestDuration)(bookingService)
+	}
 	var organizationService booking.OrganizationService
 	{
 		organizationService = ent.NewOrganizationService(m.Client)
@@ -252,6 +259,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	m.HTTPServer.ResourceService = resourceService
 	m.HTTPServer.OrganizationService = organizationService
 	m.HTTPServer.UnavailabilityService = unavailabilityService
+	m.HTTPServer.BookingService = bookingService
 	// m.HTTPServer.EventService = eventService
 	// m.HTTPServer.UserService = userService
 

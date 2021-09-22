@@ -36,7 +36,7 @@ type Resource struct {
 	// OrganizationId holds the value of the "organizationId" field.
 	OrganizationId int `json:"organizationId,omitempty"`
 	// QuantityAvailable holds the value of the "quantityAvailable" field.
-	QuantityAvailable int `json:"quantityAvailable,omitempty"`
+	QuantityAvailable *int `json:"quantityAvailable,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ResourceQuery when eager-loading is set.
 	Edges ResourceEdges `json:"edges"`
@@ -188,7 +188,8 @@ func (r *Resource) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field quantityAvailable", values[i])
 			} else if value.Valid {
-				r.QuantityAvailable = int(value.Int64)
+				r.QuantityAvailable = new(int)
+				*r.QuantityAvailable = int(value.Int64)
 			}
 		}
 	}
@@ -256,8 +257,10 @@ func (r *Resource) String() string {
 	builder.WriteString(fmt.Sprintf("%v", r.BookingPrice))
 	builder.WriteString(", organizationId=")
 	builder.WriteString(fmt.Sprintf("%v", r.OrganizationId))
-	builder.WriteString(", quantityAvailable=")
-	builder.WriteString(fmt.Sprintf("%v", r.QuantityAvailable))
+	if v := r.QuantityAvailable; v != nil {
+		builder.WriteString(", quantityAvailable=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

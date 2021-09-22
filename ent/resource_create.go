@@ -100,6 +100,14 @@ func (rc *ResourceCreate) SetQuantityAvailable(i int) *ResourceCreate {
 	return rc
 }
 
+// SetNillableQuantityAvailable sets the "quantityAvailable" field if the given value is not nil.
+func (rc *ResourceCreate) SetNillableQuantityAvailable(i *int) *ResourceCreate {
+	if i != nil {
+		rc.SetQuantityAvailable(*i)
+	}
+	return rc
+}
+
 // AddSlotIDs adds the "slots" edge to the Slot entity by IDs.
 func (rc *ResourceCreate) AddSlotIDs(ids ...int) *ResourceCreate {
 	rc.mutation.AddSlotIDs(ids...)
@@ -266,9 +274,6 @@ func (rc *ResourceCreate) check() error {
 	if _, ok := rc.mutation.OrganizationId(); !ok {
 		return &ValidationError{Name: "organizationId", err: errors.New(`ent: missing required field "organizationId"`)}
 	}
-	if _, ok := rc.mutation.QuantityAvailable(); !ok {
-		return &ValidationError{Name: "quantityAvailable", err: errors.New(`ent: missing required field "quantityAvailable"`)}
-	}
 	if _, ok := rc.mutation.OrganizationID(); !ok {
 		return &ValidationError{Name: "organization", err: errors.New("ent: missing required edge \"organization\"")}
 	}
@@ -369,7 +374,7 @@ func (rc *ResourceCreate) createSpec() (*Resource, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: resource.FieldQuantityAvailable,
 		})
-		_node.QuantityAvailable = value
+		_node.QuantityAvailable = &value
 	}
 	if nodes := rc.mutation.SlotsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

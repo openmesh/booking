@@ -150,7 +150,7 @@ var (
 		{Name: "password", Type: field.TypeString},
 		{Name: "price", Type: field.TypeInt},
 		{Name: "booking_price", Type: field.TypeInt},
-		{Name: "quantity_available", Type: field.TypeInt},
+		{Name: "quantity_available", Type: field.TypeInt, Nullable: true},
 		{Name: "organization_id", Type: field.TypeInt, Nullable: true},
 	}
 	// ResourcesTable holds the schema information for the "resources" table.

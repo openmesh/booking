@@ -24,33 +24,54 @@ func NewBookingService(client *Client) *bookingService {
 // Retrieves a single booking by ID along with the associated resource and
 // metadata. Returns ENOTFOUND if booking does not exist or user does not have
 // permission to view it.
-func (s *resourceService) FindBookingByID(
+func (s *bookingService) FindBookingByID(
 	ctx context.Context,
 	req booking.FindBookingByIDRequest,
 ) booking.FindBookingByIDResponse {
-	orgID := booking.OrganizationIDFromContext(ctx)
-	r, err := s.client.Booking.
-		Query().
-		Where(entbooking.ID(req.ID), entbooking.HasResourceWith(r.OrganizationIdEQ(orgID))).
-		WithResource().
-		First(ctx)
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return booking.FindBookingByIDResponse{
+			Err: fmt.Errorf("failed to start transaction: %w", err),
+		}
+	}
 
+	b, err := findBookingByID(ctx, tx, req.ID)
 	var nfe *NotFoundError
 	if errors.As(err, &nfe) {
-		return booking.FindBookingByIDResponse{Err: booking.WrapNotFoundError("booking")}
+		return booking.FindBookingByIDResponse{
+			Err: booking.WrapNotFoundError("booking"),
+		}
+	}
+	if err != nil {
+		return booking.FindBookingByIDResponse{
+			Err: fmt.Errorf("failed to find booking by id: %w", err),
+		}
+	}
+	if err := b.attachEdges(ctx); err != nil {
+		return booking.FindBookingByIDResponse{
+			Err: fmt.Errorf("failed to attach edges to booking: %w", err),
+		}
 	}
 
-	if err != nil {
-		return booking.FindBookingByIDResponse{Err: fmt.Errorf("failed to find booking by id: %w", err)}
-	}
-	return booking.FindBookingByIDResponse{Booking: r.toModel()}
+	return booking.FindBookingByIDResponse{Booking: b.toModel()}
+}
+
+func findBookingByID(ctx context.Context, tx *Tx, id int) (*Booking, error) {
+	orgID := booking.OrganizationIDFromContext(ctx)
+	return tx.Booking.
+		Query().
+		Where(
+			entbooking.ID(id),
+			entbooking.HasResourceWith(resource.OrganizationIdEQ(orgID)),
+		).
+		First(ctx)
 }
 
 // Retreives a list of bookings based on a filter. Only returns bookings that
 // are accessible to the user. Also returns a count of total matching bookings
 // which may be different from the number of returned bookings if the "Limit"
 // field is set.
-func (s *resourceService) FindBookings(
+func (s *bookingService) FindBookings(
 	ctx context.Context,
 	req booking.FindBookingsRequest,
 ) booking.FindBookingsResponse {
@@ -62,7 +83,7 @@ func (s *resourceService) FindBookings(
 	}
 	orgID := booking.OrganizationIDFromContext(ctx)
 	query := tx.Booking.Query().
-		Where(entbooking.HasResourceWith(r.OrganizationId(orgID)))
+		Where(entbooking.HasResourceWith(resource.OrganizationId(orgID)))
 	if req.ID != nil {
 		query = query.Where(entbooking.ID(*req.ID))
 	}
@@ -107,7 +128,7 @@ func (s *resourceService) FindBookings(
 }
 
 // Creates a new booking and assigns the current user as the owner.
-func (s *resourceService) CreateBooking(
+func (s *bookingService) CreateBooking(
 	ctx context.Context,
 	req booking.CreateBookingRequest,
 ) booking.CreateBookingResponse {
@@ -120,7 +141,7 @@ func (s *resourceService) CreateBooking(
 	}
 
 	// Get resource that booking will be created for.
-	r, err := tx.client.Resource.
+	r, err := tx.Resource.
 		Query().
 		Where(
 			resource.ID(req.ResourceID),
@@ -139,29 +160,49 @@ func (s *resourceService) CreateBooking(
 		}
 	}
 
-	// Ensure that quantity of bookings available for resource has not been
-	// exceeded.
-	if count, err := countOverlappingBookings(
-		ctx,
-		tx,
-		req.ResourceID,
-		req.StartTime,
-		req.EndTime,
-	); err != nil {
-		return booking.CreateBookingResponse{
-			Err: fmt.Errorf("failed to count overlapping bookings: %w", err),
-		}
-	} else if count >= r.QuantityAvailable {
-		return booking.CreateBookingResponse{
-			Err: booking.Error{
-				Code:   booking.ECONFLICT,
-				Detail: "Maximum bookings for specified resource reached.",
-				Title:  "Resource unavailable",
-			},
+	// If quantity available is nil then there is no limit to the number of
+	// bookings that can be made for a resource.
+	if r.QuantityAvailable != nil {
+		// Ensure that quantity of bookings available for resource has not been
+		// exceeded.
+		if count, err := countOverlappingBookings(
+			ctx,
+			tx,
+			req.ResourceID,
+			req.StartTime,
+			req.EndTime,
+		); err != nil {
+			return booking.CreateBookingResponse{
+				Err: fmt.Errorf("failed to count overlapping bookings: %w", err),
+			}
+		} else if count >= *r.QuantityAvailable {
+			return booking.CreateBookingResponse{
+				Err: booking.Error{
+					Code:   booking.ECONFLICT,
+					Detail: "Maximum bookings for specified resource reached.",
+					Title:  "Resource unavailable",
+				},
+			}
 		}
 	}
 
-	return booking.CreateBookingResponse{}
+	b, err := createBooking(ctx, tx, req)
+	if err != nil {
+		return booking.CreateBookingResponse{
+			Err: fmt.Errorf("failed to create booking: %w", err),
+		}
+	}
+
+	if err := b.attachEdges(ctx); err != nil {
+		return booking.CreateBookingResponse{
+			Err: err,
+		}
+	}
+
+	return booking.CreateBookingResponse{
+		Booking: b.toModel(),
+		Err:     tx.Commit(),
+	}
 }
 
 func countOverlappingBookings(ctx context.Context, tx *Tx, resourceID int, startTime time.Time, endTime time.Time) (int, error) {
@@ -183,23 +224,83 @@ func countOverlappingBookings(ctx context.Context, tx *Tx, resourceID int, start
 		Count(ctx)
 }
 
+func createBooking(ctx context.Context, tx *Tx, req booking.CreateBookingRequest) (*Booking, error) {
+	var m []*BookingMetadatum
+	for k, v := range req.Metadata {
+		m = append(m, &BookingMetadatum{
+			Key:   k,
+			Value: v,
+		})
+	}
+
+	return tx.Booking.
+		Create().
+		SetResourceID(req.ResourceID).
+		SetStatus(req.Status).
+		SetStartTime(req.StartTime).
+		SetEndTime(req.EndTime).
+		AddMetadata(m...).
+		Save(ctx)
+}
+
+func (b *Booking) attachEdges(ctx context.Context) (err error) {
+	b.Edges.Metadata, err = b.QueryMetadata().All(ctx)
+	if err != nil {
+		return err
+	}
+	b.Edges.Resource, err = b.QueryResource().First(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Updates an existing booking by ID. Only the booking owner can update a
 // booking. Returns the new booking state even if there was an error during
 // update.
 //
 // Returns ENOTFOUND if the booking does not exist or the user does not have
 // permission to update it.
-func (s *resourceService) UpdateBooking(
+func (s *bookingService) UpdateBooking(
 	ctx context.Context,
 	req booking.UpdateBookingRequest,
 ) booking.UpdateBookingResponse {
-	panic("not implemented") // TODO: Implement
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return booking.UpdateBookingResponse{
+			Err: fmt.Errorf("failed to start transaction: %w", err),
+		}
+	}
+
+	b, err := findBookingByID(ctx, tx, req.ID)
+	var nfe *NotFoundError
+	if errors.As(err, &nfe) {
+		return booking.UpdateBookingResponse{
+			Err: booking.WrapNotFoundError("booking"),
+		}
+	}
+	if err != nil {
+		return booking.UpdateBookingResponse{
+			Err: fmt.Errorf("failed to find booking by id: %w", err),
+		}
+	}
+}
+
+func updateBooking(ctx context.Context, tx *Tx, req booking.UpdateBookingRequest) error {
+	orgID := booking.OrganizationIDFromContext(ctx)
+	tx.Booking.
+		Update().
+		Where(
+			entbooking.ID(req.ID),
+			entbooking.HasResourceWith(resource.OrganizationId(orgID)),
+		).
+		Save(ctx)
 }
 
 // Permanently removes a booking by ID. Only the booking owner may delete a
 // booking. Returns ENOTFOUND if the booking does not exist or the user does
 // not have permission to delete it.
-func (s *resourceService) DeleteBooking(
+func (s *bookingService) DeleteBooking(
 	ctx context.Context,
 	req booking.DeleteBookingRequest,
 ) booking.DeleteBookingResponse {
@@ -237,7 +338,7 @@ func (b Bookings) toModels() []*booking.Booking {
 }
 
 func (m BookingMetadata) toMap() map[string]string {
-	var metadata map[string]string
+	metadata := make(map[string]string)
 	for i := range m {
 		metadata[m[i].Key] = m[i].Value
 	}

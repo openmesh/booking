@@ -3685,7 +3685,7 @@ func (m *ResourceMutation) QuantityAvailable() (r int, exists bool) {
 // OldQuantityAvailable returns the old "quantityAvailable" field's value of the Resource entity.
 // If the Resource object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ResourceMutation) OldQuantityAvailable(ctx context.Context) (v int, err error) {
+func (m *ResourceMutation) OldQuantityAvailable(ctx context.Context) (v *int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldQuantityAvailable is only allowed on UpdateOne operations")
 	}
@@ -3717,10 +3717,24 @@ func (m *ResourceMutation) AddedQuantityAvailable() (r int, exists bool) {
 	return *v, true
 }
 
+// ClearQuantityAvailable clears the value of the "quantityAvailable" field.
+func (m *ResourceMutation) ClearQuantityAvailable() {
+	m.quantityAvailable = nil
+	m.addquantityAvailable = nil
+	m.clearedFields[resource.FieldQuantityAvailable] = struct{}{}
+}
+
+// QuantityAvailableCleared returns if the "quantityAvailable" field was cleared in this mutation.
+func (m *ResourceMutation) QuantityAvailableCleared() bool {
+	_, ok := m.clearedFields[resource.FieldQuantityAvailable]
+	return ok
+}
+
 // ResetQuantityAvailable resets all changes to the "quantityAvailable" field.
 func (m *ResourceMutation) ResetQuantityAvailable() {
 	m.quantityAvailable = nil
 	m.addquantityAvailable = nil
+	delete(m.clearedFields, resource.FieldQuantityAvailable)
 }
 
 // AddSlotIDs adds the "slots" edge to the Slot entity by ids.
@@ -4178,7 +4192,11 @@ func (m *ResourceMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ResourceMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(resource.FieldQuantityAvailable) {
+		fields = append(fields, resource.FieldQuantityAvailable)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -4191,6 +4209,11 @@ func (m *ResourceMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ResourceMutation) ClearField(name string) error {
+	switch name {
+	case resource.FieldQuantityAvailable:
+		m.ClearQuantityAvailable()
+		return nil
+	}
 	return fmt.Errorf("unknown Resource nullable field %s", name)
 }
 

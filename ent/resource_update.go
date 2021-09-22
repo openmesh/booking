@@ -101,9 +101,23 @@ func (ru *ResourceUpdate) SetQuantityAvailable(i int) *ResourceUpdate {
 	return ru
 }
 
+// SetNillableQuantityAvailable sets the "quantityAvailable" field if the given value is not nil.
+func (ru *ResourceUpdate) SetNillableQuantityAvailable(i *int) *ResourceUpdate {
+	if i != nil {
+		ru.SetQuantityAvailable(*i)
+	}
+	return ru
+}
+
 // AddQuantityAvailable adds i to the "quantityAvailable" field.
 func (ru *ResourceUpdate) AddQuantityAvailable(i int) *ResourceUpdate {
 	ru.mutation.AddQuantityAvailable(i)
+	return ru
+}
+
+// ClearQuantityAvailable clears the value of the "quantityAvailable" field.
+func (ru *ResourceUpdate) ClearQuantityAvailable() *ResourceUpdate {
+	ru.mutation.ClearQuantityAvailable()
 	return ru
 }
 
@@ -409,6 +423,12 @@ func (ru *ResourceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: resource.FieldQuantityAvailable,
 		})
 	}
+	if ru.mutation.QuantityAvailableCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
+			Column: resource.FieldQuantityAvailable,
+		})
+	}
 	if ru.mutation.SlotsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -694,9 +714,23 @@ func (ruo *ResourceUpdateOne) SetQuantityAvailable(i int) *ResourceUpdateOne {
 	return ruo
 }
 
+// SetNillableQuantityAvailable sets the "quantityAvailable" field if the given value is not nil.
+func (ruo *ResourceUpdateOne) SetNillableQuantityAvailable(i *int) *ResourceUpdateOne {
+	if i != nil {
+		ruo.SetQuantityAvailable(*i)
+	}
+	return ruo
+}
+
 // AddQuantityAvailable adds i to the "quantityAvailable" field.
 func (ruo *ResourceUpdateOne) AddQuantityAvailable(i int) *ResourceUpdateOne {
 	ruo.mutation.AddQuantityAvailable(i)
+	return ruo
+}
+
+// ClearQuantityAvailable clears the value of the "quantityAvailable" field.
+func (ruo *ResourceUpdateOne) ClearQuantityAvailable() *ResourceUpdateOne {
+	ruo.mutation.ClearQuantityAvailable()
 	return ruo
 }
 
@@ -1023,6 +1057,12 @@ func (ruo *ResourceUpdateOne) sqlSave(ctx context.Context) (_node *Resource, err
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt,
 			Value:  value,
+			Column: resource.FieldQuantityAvailable,
+		})
+	}
+	if ruo.mutation.QuantityAvailableCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt,
 			Column: resource.FieldQuantityAvailable,
 		})
 	}

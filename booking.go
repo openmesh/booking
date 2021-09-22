@@ -15,7 +15,7 @@ type Booking struct {
 
 	// Generic information about the booking. Can include things like the
 	// customer's personal information.
-	Metadata map[string]string `json:"metadata"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 
 	// The status of the booking.
 	Status string `json:"status"`

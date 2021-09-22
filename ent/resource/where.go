@@ -1035,6 +1035,20 @@ func QuantityAvailableLTE(v int) predicate.Resource {
 	})
 }
 
+// QuantityAvailableIsNil applies the IsNil predicate on the "quantityAvailable" field.
+func QuantityAvailableIsNil() predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldQuantityAvailable)))
+	})
+}
+
+// QuantityAvailableNotNil applies the NotNil predicate on the "quantityAvailable" field.
+func QuantityAvailableNotNil() predicate.Resource {
+	return predicate.Resource(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldQuantityAvailable)))
+	})
+}
+
 // HasSlots applies the HasEdge predicate on the "slots" edge.
 func HasSlots() predicate.Resource {
 	return predicate.Resource(func(s *sql.Selector) {

@@ -121,6 +121,7 @@ func (s *Server) RegisterRoutes() {
 		r := s.router.PathPrefix("/").Subrouter()
 		r.Use(s.requireAuth)
 		s.registerResourceRoutes(r)
+		s.registerBookingRoutes(r)
 		s.registerUnavailabilityRoutes(r)
 		// s.registerDialRoutes(r)
 		// s.registerDialMembershipRoutes(r)

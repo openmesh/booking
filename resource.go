@@ -23,7 +23,7 @@ type Resource struct {
 
 	// A collection of slots that are valid for the resource. These
 	// indicate when a resource can be booked.
-	Slots []*Slot `json:"slots"`
+	Slots []*Slot `json:"slots,omitempty"`
 
 	// The timezone of the resource as a UTC offset. e.g. UTC+00:00
 	Timezone string `json:"timezone"`
@@ -124,11 +124,11 @@ type FindResourcesRequest struct {
 	Description *string `json:"description" source:"query"`
 
 	// Restrict to subset of range.
-	Offset int `json:"offset" source:"offset"`
-	Limit  int `json:"limit" source:"limit"`
+	Offset int `json:"offset" source:"query"`
+	Limit  int `json:"limit" source:"query"`
 
 	// Resource property to order by.
-	OrderBy *string `json:"orderBy" source:"orderBy"`
+	OrderBy *string `json:"orderBy" source:"query"`
 }
 
 // Validate a FindResourcesRequest. Returns a ValidationError for each
