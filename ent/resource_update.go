@@ -257,7 +257,9 @@ func (ru *ResourceUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
-	ru.defaults()
+	if err := ru.defaults(); err != nil {
+		return 0, err
+	}
 	if len(ru.hooks) == 0 {
 		if err = ru.check(); err != nil {
 			return 0, err
@@ -313,11 +315,15 @@ func (ru *ResourceUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (ru *ResourceUpdate) defaults() {
+func (ru *ResourceUpdate) defaults() error {
 	if _, ok := ru.mutation.UpdatedAt(); !ok {
+		if resource.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized resource.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := resource.UpdateDefaultUpdatedAt()
 		ru.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -877,7 +883,9 @@ func (ruo *ResourceUpdateOne) Save(ctx context.Context) (*Resource, error) {
 		err  error
 		node *Resource
 	)
-	ruo.defaults()
+	if err := ruo.defaults(); err != nil {
+		return nil, err
+	}
 	if len(ruo.hooks) == 0 {
 		if err = ruo.check(); err != nil {
 			return nil, err
@@ -933,11 +941,15 @@ func (ruo *ResourceUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (ruo *ResourceUpdateOne) defaults() {
+func (ruo *ResourceUpdateOne) defaults() error {
 	if _, ok := ruo.mutation.UpdatedAt(); !ok {
+		if resource.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized resource.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := resource.UpdateDefaultUpdatedAt()
 		ruo.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.

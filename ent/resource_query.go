@@ -451,6 +451,12 @@ func (rq *ResourceQuery) prepareQuery(ctx context.Context) error {
 		}
 		rq.sql = prev
 	}
+	if resource.Policy == nil {
+		return errors.New("ent: uninitialized resource.Policy (forgotten import ent/runtime?)")
+	}
+	if err := resource.Policy.EvalQuery(ctx, rq); err != nil {
+		return err
+	}
 	return nil
 }
 

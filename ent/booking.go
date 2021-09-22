@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/resource"
 )
 
@@ -29,6 +30,8 @@ type Booking struct {
 	EndTime time.Time `json:"endTime,omitempty"`
 	// ResourceId holds the value of the "resourceId" field.
 	ResourceId int `json:"resourceId,omitempty"`
+	// OrganizationId holds the value of the "organizationId" field.
+	OrganizationId int `json:"organizationId,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the BookingQuery when eager-loading is set.
 	Edges BookingEdges `json:"edges"`
@@ -40,9 +43,11 @@ type BookingEdges struct {
 	Metadata []*BookingMetadatum `json:"metadata,omitempty"`
 	// Resource holds the value of the resource edge.
 	Resource *Resource `json:"resource,omitempty"`
+	// Organization holds the value of the organization edge.
+	Organization *Organization `json:"organization,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // MetadataOrErr returns the Metadata value or an error if the edge
@@ -68,12 +73,26 @@ func (e BookingEdges) ResourceOrErr() (*Resource, error) {
 	return nil, &NotLoadedError{edge: "resource"}
 }
 
+// OrganizationOrErr returns the Organization value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e BookingEdges) OrganizationOrErr() (*Organization, error) {
+	if e.loadedTypes[2] {
+		if e.Organization == nil {
+			// The edge organization was loaded in eager-loading,
+			// but was not found.
+			return nil, &NotFoundError{label: organization.Label}
+		}
+		return e.Organization, nil
+	}
+	return nil, &NotLoadedError{edge: "organization"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Booking) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case booking.FieldID, booking.FieldResourceId:
+		case booking.FieldID, booking.FieldResourceId, booking.FieldOrganizationId:
 			values[i] = new(sql.NullInt64)
 		case booking.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -136,6 +155,12 @@ func (b *Booking) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				b.ResourceId = int(value.Int64)
 			}
+		case booking.FieldOrganizationId:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field organizationId", values[i])
+			} else if value.Valid {
+				b.OrganizationId = int(value.Int64)
+			}
 		}
 	}
 	return nil
@@ -149,6 +174,11 @@ func (b *Booking) QueryMetadata() *BookingMetadatumQuery {
 // QueryResource queries the "resource" edge of the Booking entity.
 func (b *Booking) QueryResource() *ResourceQuery {
 	return (&BookingClient{config: b.config}).QueryResource(b)
+}
+
+// QueryOrganization queries the "organization" edge of the Booking entity.
+func (b *Booking) QueryOrganization() *OrganizationQuery {
+	return (&BookingClient{config: b.config}).QueryOrganization(b)
 }
 
 // Update returns a builder for updating this Booking.
@@ -186,6 +216,8 @@ func (b *Booking) String() string {
 	builder.WriteString(b.EndTime.Format(time.ANSIC))
 	builder.WriteString(", resourceId=")
 	builder.WriteString(fmt.Sprintf("%v", b.ResourceId))
+	builder.WriteString(", organizationId=")
+	builder.WriteString(fmt.Sprintf("%v", b.OrganizationId))
 	builder.WriteByte(')')
 	return builder.String()
 }

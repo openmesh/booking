@@ -17,6 +17,7 @@ func (Unavailability) Fields() []ent.Field {
 		field.Time("startTime"),
 		field.Time("endTime"),
 		field.Int("resourceId"),
+		field.Int("organizationId"),
 	}
 }
 
@@ -26,6 +27,11 @@ func (Unavailability) Edges() []ent.Edge {
 		edge.From("resource", Resource.Type).
 			Ref("unavailabilities").
 			Field("resourceId").
+			Unique().
+			Required(),
+		edge.From("organization", Organization.Type).
+			Ref("unavailabilities").
+			Field("organizationId").
 			Unique().
 			Required(),
 	}

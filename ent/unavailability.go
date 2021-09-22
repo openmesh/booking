@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/unavailability"
 )
@@ -27,6 +28,8 @@ type Unavailability struct {
 	EndTime time.Time `json:"endTime,omitempty"`
 	// ResourceId holds the value of the "resourceId" field.
 	ResourceId int `json:"resourceId,omitempty"`
+	// OrganizationId holds the value of the "organizationId" field.
+	OrganizationId int `json:"organizationId,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UnavailabilityQuery when eager-loading is set.
 	Edges UnavailabilityEdges `json:"edges"`
@@ -36,9 +39,11 @@ type Unavailability struct {
 type UnavailabilityEdges struct {
 	// Resource holds the value of the resource edge.
 	Resource *Resource `json:"resource,omitempty"`
+	// Organization holds the value of the organization edge.
+	Organization *Organization `json:"organization,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // ResourceOrErr returns the Resource value or an error if the edge
@@ -55,12 +60,26 @@ func (e UnavailabilityEdges) ResourceOrErr() (*Resource, error) {
 	return nil, &NotLoadedError{edge: "resource"}
 }
 
+// OrganizationOrErr returns the Organization value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UnavailabilityEdges) OrganizationOrErr() (*Organization, error) {
+	if e.loadedTypes[1] {
+		if e.Organization == nil {
+			// The edge organization was loaded in eager-loading,
+			// but was not found.
+			return nil, &NotFoundError{label: organization.Label}
+		}
+		return e.Organization, nil
+	}
+	return nil, &NotLoadedError{edge: "organization"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Unavailability) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case unavailability.FieldID, unavailability.FieldResourceId:
+		case unavailability.FieldID, unavailability.FieldResourceId, unavailability.FieldOrganizationId:
 			values[i] = new(sql.NullInt64)
 		case unavailability.FieldCreatedAt, unavailability.FieldUpdatedAt, unavailability.FieldStartTime, unavailability.FieldEndTime:
 			values[i] = new(sql.NullTime)
@@ -115,6 +134,12 @@ func (u *Unavailability) assignValues(columns []string, values []interface{}) er
 			} else if value.Valid {
 				u.ResourceId = int(value.Int64)
 			}
+		case unavailability.FieldOrganizationId:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field organizationId", values[i])
+			} else if value.Valid {
+				u.OrganizationId = int(value.Int64)
+			}
 		}
 	}
 	return nil
@@ -123,6 +148,11 @@ func (u *Unavailability) assignValues(columns []string, values []interface{}) er
 // QueryResource queries the "resource" edge of the Unavailability entity.
 func (u *Unavailability) QueryResource() *ResourceQuery {
 	return (&UnavailabilityClient{config: u.config}).QueryResource(u)
+}
+
+// QueryOrganization queries the "organization" edge of the Unavailability entity.
+func (u *Unavailability) QueryOrganization() *OrganizationQuery {
+	return (&UnavailabilityClient{config: u.config}).QueryOrganization(u)
 }
 
 // Update returns a builder for updating this Unavailability.
@@ -158,6 +188,8 @@ func (u *Unavailability) String() string {
 	builder.WriteString(u.EndTime.Format(time.ANSIC))
 	builder.WriteString(", resourceId=")
 	builder.WriteString(fmt.Sprintf("%v", u.ResourceId))
+	builder.WriteString(", organizationId=")
+	builder.WriteString(fmt.Sprintf("%v", u.OrganizationId))
 	builder.WriteByte(')')
 	return builder.String()
 }

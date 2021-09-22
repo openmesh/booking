@@ -12,9 +12,11 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
+	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 )
 
@@ -28,8 +30,10 @@ type OrganizationQuery struct {
 	fields     []string
 	predicates []predicate.Organization
 	// eager-loading edges.
-	withUsers     *UserQuery
-	withResources *ResourceQuery
+	withUsers            *UserQuery
+	withResources        *ResourceQuery
+	withBookings         *BookingQuery
+	withUnavailabilities *UnavailabilityQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -103,6 +107,50 @@ func (oq *OrganizationQuery) QueryResources() *ResourceQuery {
 			sqlgraph.From(organization.Table, organization.FieldID, selector),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, organization.ResourcesTable, organization.ResourcesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryBookings chains the current query on the "bookings" edge.
+func (oq *OrganizationQuery) QueryBookings() *BookingQuery {
+	query := &BookingQuery{config: oq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := oq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := oq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, selector),
+			sqlgraph.To(booking.Table, booking.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.BookingsTable, organization.BookingsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryUnavailabilities chains the current query on the "unavailabilities" edge.
+func (oq *OrganizationQuery) QueryUnavailabilities() *UnavailabilityQuery {
+	query := &UnavailabilityQuery{config: oq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := oq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := oq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, selector),
+			sqlgraph.To(unavailability.Table, unavailability.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.UnavailabilitiesTable, organization.UnavailabilitiesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
 		return fromU, nil
@@ -286,13 +334,15 @@ func (oq *OrganizationQuery) Clone() *OrganizationQuery {
 		return nil
 	}
 	return &OrganizationQuery{
-		config:        oq.config,
-		limit:         oq.limit,
-		offset:        oq.offset,
-		order:         append([]OrderFunc{}, oq.order...),
-		predicates:    append([]predicate.Organization{}, oq.predicates...),
-		withUsers:     oq.withUsers.Clone(),
-		withResources: oq.withResources.Clone(),
+		config:               oq.config,
+		limit:                oq.limit,
+		offset:               oq.offset,
+		order:                append([]OrderFunc{}, oq.order...),
+		predicates:           append([]predicate.Organization{}, oq.predicates...),
+		withUsers:            oq.withUsers.Clone(),
+		withResources:        oq.withResources.Clone(),
+		withBookings:         oq.withBookings.Clone(),
+		withUnavailabilities: oq.withUnavailabilities.Clone(),
 		// clone intermediate query.
 		sql:  oq.sql.Clone(),
 		path: oq.path,
@@ -318,6 +368,28 @@ func (oq *OrganizationQuery) WithResources(opts ...func(*ResourceQuery)) *Organi
 		opt(query)
 	}
 	oq.withResources = query
+	return oq
+}
+
+// WithBookings tells the query-builder to eager-load the nodes that are connected to
+// the "bookings" edge. The optional arguments are used to configure the query builder of the edge.
+func (oq *OrganizationQuery) WithBookings(opts ...func(*BookingQuery)) *OrganizationQuery {
+	query := &BookingQuery{config: oq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	oq.withBookings = query
+	return oq
+}
+
+// WithUnavailabilities tells the query-builder to eager-load the nodes that are connected to
+// the "unavailabilities" edge. The optional arguments are used to configure the query builder of the edge.
+func (oq *OrganizationQuery) WithUnavailabilities(opts ...func(*UnavailabilityQuery)) *OrganizationQuery {
+	query := &UnavailabilityQuery{config: oq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	oq.withUnavailabilities = query
 	return oq
 }
 
@@ -386,9 +458,11 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context) ([]*Organization, error
 	var (
 		nodes       = []*Organization{}
 		_spec       = oq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [4]bool{
 			oq.withUsers != nil,
 			oq.withResources != nil,
+			oq.withBookings != nil,
+			oq.withUnavailabilities != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -458,6 +532,56 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context) ([]*Organization, error
 				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, fk, n.ID)
 			}
 			node.Edges.Resources = append(node.Edges.Resources, n)
+		}
+	}
+
+	if query := oq.withBookings; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Organization)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Bookings = []*Booking{}
+		}
+		query.Where(predicate.Booking(func(s *sql.Selector) {
+			s.Where(sql.InValues(organization.BookingsColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.OrganizationId
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.Bookings = append(node.Edges.Bookings, n)
+		}
+	}
+
+	if query := oq.withUnavailabilities; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Organization)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Unavailabilities = []*Unavailability{}
+		}
+		query.Where(predicate.Unavailability(func(s *sql.Selector) {
+			s.Where(sql.InValues(organization.UnavailabilitiesColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.OrganizationId
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.Unavailabilities = append(node.Edges.Unavailabilities, n)
 		}
 	}
 

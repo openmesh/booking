@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/bookingmetadatum"
+	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/resource"
 )
 
@@ -74,6 +75,12 @@ func (bc *BookingCreate) SetResourceId(i int) *BookingCreate {
 	return bc
 }
 
+// SetOrganizationId sets the "organizationId" field.
+func (bc *BookingCreate) SetOrganizationId(i int) *BookingCreate {
+	bc.mutation.SetOrganizationId(i)
+	return bc
+}
+
 // AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by IDs.
 func (bc *BookingCreate) AddMetadatumIDs(ids ...int) *BookingCreate {
 	bc.mutation.AddMetadatumIDs(ids...)
@@ -98,6 +105,17 @@ func (bc *BookingCreate) SetResourceID(id int) *BookingCreate {
 // SetResource sets the "resource" edge to the Resource entity.
 func (bc *BookingCreate) SetResource(r *Resource) *BookingCreate {
 	return bc.SetResourceID(r.ID)
+}
+
+// SetOrganizationID sets the "organization" edge to the Organization entity by ID.
+func (bc *BookingCreate) SetOrganizationID(id int) *BookingCreate {
+	bc.mutation.SetOrganizationID(id)
+	return bc
+}
+
+// SetOrganization sets the "organization" edge to the Organization entity.
+func (bc *BookingCreate) SetOrganization(o *Organization) *BookingCreate {
+	return bc.SetOrganizationID(o.ID)
 }
 
 // Mutation returns the BookingMutation object of the builder.
@@ -201,8 +219,14 @@ func (bc *BookingCreate) check() error {
 	if _, ok := bc.mutation.ResourceId(); !ok {
 		return &ValidationError{Name: "resourceId", err: errors.New(`ent: missing required field "resourceId"`)}
 	}
+	if _, ok := bc.mutation.OrganizationId(); !ok {
+		return &ValidationError{Name: "organizationId", err: errors.New(`ent: missing required field "organizationId"`)}
+	}
 	if _, ok := bc.mutation.ResourceID(); !ok {
 		return &ValidationError{Name: "resource", err: errors.New("ent: missing required edge \"resource\"")}
+	}
+	if _, ok := bc.mutation.OrganizationID(); !ok {
+		return &ValidationError{Name: "organization", err: errors.New("ent: missing required edge \"organization\"")}
 	}
 	return nil
 }
@@ -308,6 +332,26 @@ func (bc *BookingCreate) createSpec() (*Booking, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.ResourceId = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := bc.mutation.OrganizationIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   booking.OrganizationTable,
+			Columns: []string{booking.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.OrganizationId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

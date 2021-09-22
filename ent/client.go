@@ -401,6 +401,22 @@ func (c *BookingClient) QueryResource(b *Booking) *ResourceQuery {
 	return query
 }
 
+// QueryOrganization queries the organization edge of a Booking.
+func (c *BookingClient) QueryOrganization(b *Booking) *OrganizationQuery {
+	query := &OrganizationQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := b.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(booking.Table, booking.FieldID, id),
+			sqlgraph.To(organization.Table, organization.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, booking.OrganizationTable, booking.OrganizationColumn),
+		)
+		fromV = sqlgraph.Neighbors(b.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *BookingClient) Hooks() []Hook {
 	return c.hooks.Booking
@@ -622,6 +638,38 @@ func (c *OrganizationClient) QueryResources(o *Organization) *ResourceQuery {
 			sqlgraph.From(organization.Table, organization.FieldID, id),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, organization.ResourcesTable, organization.ResourcesColumn),
+		)
+		fromV = sqlgraph.Neighbors(o.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBookings queries the bookings edge of a Organization.
+func (c *OrganizationClient) QueryBookings(o *Organization) *BookingQuery {
+	query := &BookingQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := o.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, id),
+			sqlgraph.To(booking.Table, booking.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.BookingsTable, organization.BookingsColumn),
+		)
+		fromV = sqlgraph.Neighbors(o.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUnavailabilities queries the unavailabilities edge of a Organization.
+func (c *OrganizationClient) QueryUnavailabilities(o *Organization) *UnavailabilityQuery {
+	query := &UnavailabilityQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := o.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, id),
+			sqlgraph.To(unavailability.Table, unavailability.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.UnavailabilitiesTable, organization.UnavailabilitiesColumn),
 		)
 		fromV = sqlgraph.Neighbors(o.driver.Dialect(), step)
 		return fromV, nil
@@ -907,7 +955,8 @@ func (c *ResourceClient) QueryOrganization(r *Resource) *OrganizationQuery {
 
 // Hooks returns the client hooks.
 func (c *ResourceClient) Hooks() []Hook {
-	return c.hooks.Resource
+	hooks := c.hooks.Resource
+	return append(hooks[:len(hooks):len(hooks)], resource.Hooks[:]...)
 }
 
 // SlotClient is a client for the Slot schema.
@@ -1110,6 +1159,22 @@ func (c *UnavailabilityClient) QueryResource(u *Unavailability) *ResourceQuery {
 			sqlgraph.From(unavailability.Table, unavailability.FieldID, id),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, unavailability.ResourceTable, unavailability.ResourceColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryOrganization queries the organization edge of a Unavailability.
+func (c *UnavailabilityClient) QueryOrganization(u *Unavailability) *OrganizationQuery {
+	query := &OrganizationQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(unavailability.Table, unavailability.FieldID, id),
+			sqlgraph.To(organization.Table, organization.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, unavailability.OrganizationTable, unavailability.OrganizationColumn),
 		)
 		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
 		return fromV, nil

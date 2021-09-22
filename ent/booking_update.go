@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/bookingmetadatum"
+	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 )
@@ -60,6 +61,12 @@ func (bu *BookingUpdate) SetResourceId(i int) *BookingUpdate {
 	return bu
 }
 
+// SetOrganizationId sets the "organizationId" field.
+func (bu *BookingUpdate) SetOrganizationId(i int) *BookingUpdate {
+	bu.mutation.SetOrganizationId(i)
+	return bu
+}
+
 // AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by IDs.
 func (bu *BookingUpdate) AddMetadatumIDs(ids ...int) *BookingUpdate {
 	bu.mutation.AddMetadatumIDs(ids...)
@@ -84,6 +91,17 @@ func (bu *BookingUpdate) SetResourceID(id int) *BookingUpdate {
 // SetResource sets the "resource" edge to the Resource entity.
 func (bu *BookingUpdate) SetResource(r *Resource) *BookingUpdate {
 	return bu.SetResourceID(r.ID)
+}
+
+// SetOrganizationID sets the "organization" edge to the Organization entity by ID.
+func (bu *BookingUpdate) SetOrganizationID(id int) *BookingUpdate {
+	bu.mutation.SetOrganizationID(id)
+	return bu
+}
+
+// SetOrganization sets the "organization" edge to the Organization entity.
+func (bu *BookingUpdate) SetOrganization(o *Organization) *BookingUpdate {
+	return bu.SetOrganizationID(o.ID)
 }
 
 // Mutation returns the BookingMutation object of the builder.
@@ -115,6 +133,12 @@ func (bu *BookingUpdate) RemoveMetadata(b ...*BookingMetadatum) *BookingUpdate {
 // ClearResource clears the "resource" edge to the Resource entity.
 func (bu *BookingUpdate) ClearResource() *BookingUpdate {
 	bu.mutation.ClearResource()
+	return bu
+}
+
+// ClearOrganization clears the "organization" edge to the Organization entity.
+func (bu *BookingUpdate) ClearOrganization() *BookingUpdate {
+	bu.mutation.ClearOrganization()
 	return bu
 }
 
@@ -191,6 +215,9 @@ func (bu *BookingUpdate) defaults() {
 func (bu *BookingUpdate) check() error {
 	if _, ok := bu.mutation.ResourceID(); bu.mutation.ResourceCleared() && !ok {
 		return errors.New("ent: clearing a required unique edge \"resource\"")
+	}
+	if _, ok := bu.mutation.OrganizationID(); bu.mutation.OrganizationCleared() && !ok {
+		return errors.New("ent: clearing a required unique edge \"organization\"")
 	}
 	return nil
 }
@@ -330,6 +357,41 @@ func (bu *BookingUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if bu.mutation.OrganizationCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   booking.OrganizationTable,
+			Columns: []string{booking.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := bu.mutation.OrganizationIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   booking.OrganizationTable,
+			Columns: []string{booking.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{booking.Label}
@@ -379,6 +441,12 @@ func (buo *BookingUpdateOne) SetResourceId(i int) *BookingUpdateOne {
 	return buo
 }
 
+// SetOrganizationId sets the "organizationId" field.
+func (buo *BookingUpdateOne) SetOrganizationId(i int) *BookingUpdateOne {
+	buo.mutation.SetOrganizationId(i)
+	return buo
+}
+
 // AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by IDs.
 func (buo *BookingUpdateOne) AddMetadatumIDs(ids ...int) *BookingUpdateOne {
 	buo.mutation.AddMetadatumIDs(ids...)
@@ -403,6 +471,17 @@ func (buo *BookingUpdateOne) SetResourceID(id int) *BookingUpdateOne {
 // SetResource sets the "resource" edge to the Resource entity.
 func (buo *BookingUpdateOne) SetResource(r *Resource) *BookingUpdateOne {
 	return buo.SetResourceID(r.ID)
+}
+
+// SetOrganizationID sets the "organization" edge to the Organization entity by ID.
+func (buo *BookingUpdateOne) SetOrganizationID(id int) *BookingUpdateOne {
+	buo.mutation.SetOrganizationID(id)
+	return buo
+}
+
+// SetOrganization sets the "organization" edge to the Organization entity.
+func (buo *BookingUpdateOne) SetOrganization(o *Organization) *BookingUpdateOne {
+	return buo.SetOrganizationID(o.ID)
 }
 
 // Mutation returns the BookingMutation object of the builder.
@@ -434,6 +513,12 @@ func (buo *BookingUpdateOne) RemoveMetadata(b ...*BookingMetadatum) *BookingUpda
 // ClearResource clears the "resource" edge to the Resource entity.
 func (buo *BookingUpdateOne) ClearResource() *BookingUpdateOne {
 	buo.mutation.ClearResource()
+	return buo
+}
+
+// ClearOrganization clears the "organization" edge to the Organization entity.
+func (buo *BookingUpdateOne) ClearOrganization() *BookingUpdateOne {
+	buo.mutation.ClearOrganization()
 	return buo
 }
 
@@ -517,6 +602,9 @@ func (buo *BookingUpdateOne) defaults() {
 func (buo *BookingUpdateOne) check() error {
 	if _, ok := buo.mutation.ResourceID(); buo.mutation.ResourceCleared() && !ok {
 		return errors.New("ent: clearing a required unique edge \"resource\"")
+	}
+	if _, ok := buo.mutation.OrganizationID(); buo.mutation.OrganizationCleared() && !ok {
+		return errors.New("ent: clearing a required unique edge \"organization\"")
 	}
 	return nil
 }
@@ -665,6 +753,41 @@ func (buo *BookingUpdateOne) sqlSave(ctx context.Context) (_node *Booking, err e
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: resource.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if buo.mutation.OrganizationCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   booking.OrganizationTable,
+			Columns: []string{booking.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := buo.mutation.OrganizationIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   booking.OrganizationTable,
+			Columns: []string{booking.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
 				},
 			},
 		}

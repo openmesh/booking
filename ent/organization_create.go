@@ -10,8 +10,10 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/resource"
+	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 )
 
@@ -96,6 +98,36 @@ func (oc *OrganizationCreate) AddResources(r ...*Resource) *OrganizationCreate {
 		ids[i] = r[i].ID
 	}
 	return oc.AddResourceIDs(ids...)
+}
+
+// AddBookingIDs adds the "bookings" edge to the Booking entity by IDs.
+func (oc *OrganizationCreate) AddBookingIDs(ids ...int) *OrganizationCreate {
+	oc.mutation.AddBookingIDs(ids...)
+	return oc
+}
+
+// AddBookings adds the "bookings" edges to the Booking entity.
+func (oc *OrganizationCreate) AddBookings(b ...*Booking) *OrganizationCreate {
+	ids := make([]int, len(b))
+	for i := range b {
+		ids[i] = b[i].ID
+	}
+	return oc.AddBookingIDs(ids...)
+}
+
+// AddUnavailabilityIDs adds the "unavailabilities" edge to the Unavailability entity by IDs.
+func (oc *OrganizationCreate) AddUnavailabilityIDs(ids ...int) *OrganizationCreate {
+	oc.mutation.AddUnavailabilityIDs(ids...)
+	return oc
+}
+
+// AddUnavailabilities adds the "unavailabilities" edges to the Unavailability entity.
+func (oc *OrganizationCreate) AddUnavailabilities(u ...*Unavailability) *OrganizationCreate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return oc.AddUnavailabilityIDs(ids...)
 }
 
 // Mutation returns the OrganizationMutation object of the builder.
@@ -293,6 +325,44 @@ func (oc *OrganizationCreate) createSpec() (*Organization, *sqlgraph.CreateSpec)
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: resource.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := oc.mutation.BookingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.BookingsTable,
+			Columns: []string{organization.BookingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: booking.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := oc.mutation.UnavailabilitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.UnavailabilitiesTable,
+			Columns: []string{organization.UnavailabilitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: unavailability.FieldID,
 				},
 			},
 		}

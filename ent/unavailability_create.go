@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/unavailability"
 )
@@ -67,6 +68,12 @@ func (uc *UnavailabilityCreate) SetResourceId(i int) *UnavailabilityCreate {
 	return uc
 }
 
+// SetOrganizationId sets the "organizationId" field.
+func (uc *UnavailabilityCreate) SetOrganizationId(i int) *UnavailabilityCreate {
+	uc.mutation.SetOrganizationId(i)
+	return uc
+}
+
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
 func (uc *UnavailabilityCreate) SetResourceID(id int) *UnavailabilityCreate {
 	uc.mutation.SetResourceID(id)
@@ -76,6 +83,17 @@ func (uc *UnavailabilityCreate) SetResourceID(id int) *UnavailabilityCreate {
 // SetResource sets the "resource" edge to the Resource entity.
 func (uc *UnavailabilityCreate) SetResource(r *Resource) *UnavailabilityCreate {
 	return uc.SetResourceID(r.ID)
+}
+
+// SetOrganizationID sets the "organization" edge to the Organization entity by ID.
+func (uc *UnavailabilityCreate) SetOrganizationID(id int) *UnavailabilityCreate {
+	uc.mutation.SetOrganizationID(id)
+	return uc
+}
+
+// SetOrganization sets the "organization" edge to the Organization entity.
+func (uc *UnavailabilityCreate) SetOrganization(o *Organization) *UnavailabilityCreate {
+	return uc.SetOrganizationID(o.ID)
 }
 
 // Mutation returns the UnavailabilityMutation object of the builder.
@@ -176,8 +194,14 @@ func (uc *UnavailabilityCreate) check() error {
 	if _, ok := uc.mutation.ResourceId(); !ok {
 		return &ValidationError{Name: "resourceId", err: errors.New(`ent: missing required field "resourceId"`)}
 	}
+	if _, ok := uc.mutation.OrganizationId(); !ok {
+		return &ValidationError{Name: "organizationId", err: errors.New(`ent: missing required field "organizationId"`)}
+	}
 	if _, ok := uc.mutation.ResourceID(); !ok {
 		return &ValidationError{Name: "resource", err: errors.New("ent: missing required edge \"resource\"")}
+	}
+	if _, ok := uc.mutation.OrganizationID(); !ok {
+		return &ValidationError{Name: "organization", err: errors.New("ent: missing required edge \"organization\"")}
 	}
 	return nil
 }
@@ -256,6 +280,26 @@ func (uc *UnavailabilityCreate) createSpec() (*Unavailability, *sqlgraph.CreateS
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.ResourceId = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.OrganizationIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   unavailability.OrganizationTable,
+			Columns: []string{unavailability.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.OrganizationId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

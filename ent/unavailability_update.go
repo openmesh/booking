@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/unavailability"
@@ -53,6 +54,12 @@ func (uu *UnavailabilityUpdate) SetResourceId(i int) *UnavailabilityUpdate {
 	return uu
 }
 
+// SetOrganizationId sets the "organizationId" field.
+func (uu *UnavailabilityUpdate) SetOrganizationId(i int) *UnavailabilityUpdate {
+	uu.mutation.SetOrganizationId(i)
+	return uu
+}
+
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
 func (uu *UnavailabilityUpdate) SetResourceID(id int) *UnavailabilityUpdate {
 	uu.mutation.SetResourceID(id)
@@ -64,6 +71,17 @@ func (uu *UnavailabilityUpdate) SetResource(r *Resource) *UnavailabilityUpdate {
 	return uu.SetResourceID(r.ID)
 }
 
+// SetOrganizationID sets the "organization" edge to the Organization entity by ID.
+func (uu *UnavailabilityUpdate) SetOrganizationID(id int) *UnavailabilityUpdate {
+	uu.mutation.SetOrganizationID(id)
+	return uu
+}
+
+// SetOrganization sets the "organization" edge to the Organization entity.
+func (uu *UnavailabilityUpdate) SetOrganization(o *Organization) *UnavailabilityUpdate {
+	return uu.SetOrganizationID(o.ID)
+}
+
 // Mutation returns the UnavailabilityMutation object of the builder.
 func (uu *UnavailabilityUpdate) Mutation() *UnavailabilityMutation {
 	return uu.mutation
@@ -72,6 +90,12 @@ func (uu *UnavailabilityUpdate) Mutation() *UnavailabilityMutation {
 // ClearResource clears the "resource" edge to the Resource entity.
 func (uu *UnavailabilityUpdate) ClearResource() *UnavailabilityUpdate {
 	uu.mutation.ClearResource()
+	return uu
+}
+
+// ClearOrganization clears the "organization" edge to the Organization entity.
+func (uu *UnavailabilityUpdate) ClearOrganization() *UnavailabilityUpdate {
+	uu.mutation.ClearOrganization()
 	return uu
 }
 
@@ -148,6 +172,9 @@ func (uu *UnavailabilityUpdate) defaults() {
 func (uu *UnavailabilityUpdate) check() error {
 	if _, ok := uu.mutation.ResourceID(); uu.mutation.ResourceCleared() && !ok {
 		return errors.New("ent: clearing a required unique edge \"resource\"")
+	}
+	if _, ok := uu.mutation.OrganizationID(); uu.mutation.OrganizationCleared() && !ok {
+		return errors.New("ent: clearing a required unique edge \"organization\"")
 	}
 	return nil
 }
@@ -226,6 +253,41 @@ func (uu *UnavailabilityUpdate) sqlSave(ctx context.Context) (n int, err error) 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uu.mutation.OrganizationCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   unavailability.OrganizationTable,
+			Columns: []string{unavailability.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.OrganizationIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   unavailability.OrganizationTable,
+			Columns: []string{unavailability.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{unavailability.Label}
@@ -269,6 +331,12 @@ func (uuo *UnavailabilityUpdateOne) SetResourceId(i int) *UnavailabilityUpdateOn
 	return uuo
 }
 
+// SetOrganizationId sets the "organizationId" field.
+func (uuo *UnavailabilityUpdateOne) SetOrganizationId(i int) *UnavailabilityUpdateOne {
+	uuo.mutation.SetOrganizationId(i)
+	return uuo
+}
+
 // SetResourceID sets the "resource" edge to the Resource entity by ID.
 func (uuo *UnavailabilityUpdateOne) SetResourceID(id int) *UnavailabilityUpdateOne {
 	uuo.mutation.SetResourceID(id)
@@ -280,6 +348,17 @@ func (uuo *UnavailabilityUpdateOne) SetResource(r *Resource) *UnavailabilityUpda
 	return uuo.SetResourceID(r.ID)
 }
 
+// SetOrganizationID sets the "organization" edge to the Organization entity by ID.
+func (uuo *UnavailabilityUpdateOne) SetOrganizationID(id int) *UnavailabilityUpdateOne {
+	uuo.mutation.SetOrganizationID(id)
+	return uuo
+}
+
+// SetOrganization sets the "organization" edge to the Organization entity.
+func (uuo *UnavailabilityUpdateOne) SetOrganization(o *Organization) *UnavailabilityUpdateOne {
+	return uuo.SetOrganizationID(o.ID)
+}
+
 // Mutation returns the UnavailabilityMutation object of the builder.
 func (uuo *UnavailabilityUpdateOne) Mutation() *UnavailabilityMutation {
 	return uuo.mutation
@@ -288,6 +367,12 @@ func (uuo *UnavailabilityUpdateOne) Mutation() *UnavailabilityMutation {
 // ClearResource clears the "resource" edge to the Resource entity.
 func (uuo *UnavailabilityUpdateOne) ClearResource() *UnavailabilityUpdateOne {
 	uuo.mutation.ClearResource()
+	return uuo
+}
+
+// ClearOrganization clears the "organization" edge to the Organization entity.
+func (uuo *UnavailabilityUpdateOne) ClearOrganization() *UnavailabilityUpdateOne {
+	uuo.mutation.ClearOrganization()
 	return uuo
 }
 
@@ -371,6 +456,9 @@ func (uuo *UnavailabilityUpdateOne) defaults() {
 func (uuo *UnavailabilityUpdateOne) check() error {
 	if _, ok := uuo.mutation.ResourceID(); uuo.mutation.ResourceCleared() && !ok {
 		return errors.New("ent: clearing a required unique edge \"resource\"")
+	}
+	if _, ok := uuo.mutation.OrganizationID(); uuo.mutation.OrganizationCleared() && !ok {
+		return errors.New("ent: clearing a required unique edge \"organization\"")
 	}
 	return nil
 }
@@ -458,6 +546,41 @@ func (uuo *UnavailabilityUpdateOne) sqlSave(ctx context.Context) (_node *Unavail
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: resource.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.OrganizationCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   unavailability.OrganizationTable,
+			Columns: []string{unavailability.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.OrganizationIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   unavailability.OrganizationTable,
+			Columns: []string{unavailability.OrganizationColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: organization.FieldID,
 				},
 			},
 		}

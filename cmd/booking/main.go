@@ -20,6 +20,7 @@ import (
 	"github.com/pelletier/go-toml"
 
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
+	_ "github.com/openmesh/booking/ent/runtime"
 	logging "github.com/openmesh/booking/log"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 )
@@ -290,7 +291,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 
 const (
 	// DefaultConfigPath is the default path to the application configuration.
-	DefaultConfigPath = "~/booking.conf"
+	DefaultConfigPath = "booking.conf"
 
 	// DefaultDSN is the default datasource name.
 	DefaultDSN = "~/.booking/db"

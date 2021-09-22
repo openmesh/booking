@@ -44,6 +44,14 @@ func (s *resourceService) FindResourceByID(
 	return booking.FindResourceByIDResponse{Resource: r.toModel()}
 }
 
+func findResourceByID(ctx context.Context, tx *Tx, id int) (*Resource, error) {
+	orgID := booking.OrganizationIDFromContext(ctx)
+	return tx.Resource.
+		Query().
+		Where(resource.ID(id), resource.OrganizationId(orgID)).
+		First(ctx)
+}
+
 func (s *resourceService) FindResources(ctx context.Context, req booking.FindResourcesRequest) booking.FindResourcesResponse {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {

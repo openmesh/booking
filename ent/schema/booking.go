@@ -18,6 +18,7 @@ func (Booking) Fields() []ent.Field {
 		field.Time("startTime"),
 		field.Time("endTime"),
 		field.Int("resourceId"),
+		field.Int("organizationId"),
 	}
 }
 
@@ -28,6 +29,11 @@ func (Booking) Edges() []ent.Edge {
 		edge.From("resource", Resource.Type).
 			Ref("bookings").
 			Field("resourceId").
+			Unique().
+			Required(),
+		edge.From("organization", Organization.Type).
+			Ref("bookings").
+			Field("organizationId").
 			Unique().
 			Required(),
 	}

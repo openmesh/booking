@@ -11,12 +11,18 @@ import (
 // Different applications can have very different error code requirements so
 // these should be expanded as needed (or introduce subcodes).
 const (
-	ECONFLICT       = "conflict"
-	EINTERNAL       = "internal"
-	EINVALID        = "invalid"
-	ENOTFOUND       = "not_found"
-	ENOTIMPLEMENTED = "not_implemented"
-	EUNAUTHORIZED   = "unauthorized"
+	ECONFLICT = "conflict"
+	// EBOOKINGCONFLICT indicates that a request was made to create a booking that
+	// would exceed the quantity available for a resource.
+	EBOOKINGCONFLICT = "booking_conflict"
+	EINTERNAL        = "internal"
+	EINVALID         = "invalid"
+	ENOTFOUND        = "not_found"
+	// ERESOURCENOTFOUND indicates that a request was made to retrieve a resource
+	// that does not exist.
+	ERESOURCENOTFOUND = "resource_not_found"
+	ENOTIMPLEMENTED   = "not_implemented"
+	EUNAUTHORIZED     = "unauthorized"
 )
 
 // Error represents an application-specific error. Application errors can be
@@ -41,7 +47,7 @@ type Error struct {
 	Params []ValidationError `json:"params,omitempty"`
 }
 
-// Error implements the error interface. Not used by the application otherwise.
+// Error implements the errorer interface. Not used by the application otherwise.
 func (e Error) Error() string {
 	return fmt.Sprintf("booking error: code=%s title=%s detail=%s", e.Code, e.Title, e.Detail)
 }
@@ -76,6 +82,15 @@ func Errorf(code string, format string, args ...interface{}) *Error {
 	return &Error{
 		Code:   code,
 		Detail: fmt.Sprintf(format, args...),
+	}
+}
+
+func ValidationErrorf(detail string, errs ...ValidationError) *Error {
+	return &Error{
+		Code:   EINVALID,
+		Detail: "One or more validation errors occurred while processing your request.",
+		Title:  "Invalid request",
+		Params: errs,
 	}
 }
 

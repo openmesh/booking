@@ -25,6 +25,10 @@ const (
 	EdgeUsers = "users"
 	// EdgeResources holds the string denoting the resources edge name in mutations.
 	EdgeResources = "resources"
+	// EdgeBookings holds the string denoting the bookings edge name in mutations.
+	EdgeBookings = "bookings"
+	// EdgeUnavailabilities holds the string denoting the unavailabilities edge name in mutations.
+	EdgeUnavailabilities = "unavailabilities"
 	// Table holds the table name of the organization in the database.
 	Table = "organizations"
 	// UsersTable is the table that holds the users relation/edge.
@@ -41,6 +45,20 @@ const (
 	ResourcesInverseTable = "resources"
 	// ResourcesColumn is the table column denoting the resources relation/edge.
 	ResourcesColumn = "organization_id"
+	// BookingsTable is the table that holds the bookings relation/edge.
+	BookingsTable = "bookings"
+	// BookingsInverseTable is the table name for the Booking entity.
+	// It exists in this package in order to avoid circular dependency with the "booking" package.
+	BookingsInverseTable = "bookings"
+	// BookingsColumn is the table column denoting the bookings relation/edge.
+	BookingsColumn = "organization_id"
+	// UnavailabilitiesTable is the table that holds the unavailabilities relation/edge.
+	UnavailabilitiesTable = "unavailabilities"
+	// UnavailabilitiesInverseTable is the table name for the Unavailability entity.
+	// It exists in this package in order to avoid circular dependency with the "unavailability" package.
+	UnavailabilitiesInverseTable = "unavailabilities"
+	// UnavailabilitiesColumn is the table column denoting the unavailabilities relation/edge.
+	UnavailabilitiesColumn = "organization_id"
 )
 
 // Columns holds all SQL columns for organization fields.

@@ -272,7 +272,7 @@ func (s *bookingService) UpdateBooking(
 		}
 	}
 
-	b, err := findBookingByID(ctx, tx, req.ID)
+	_, err = findBookingByID(ctx, tx, req.ID)
 	var nfe *NotFoundError
 	if errors.As(err, &nfe) {
 		return booking.UpdateBookingResponse{
@@ -284,6 +284,38 @@ func (s *bookingService) UpdateBooking(
 			Err: fmt.Errorf("failed to find booking by id: %w", err),
 		}
 	}
+	return booking.UpdateBookingResponse{}
+}
+
+func canUpdateBooking(ctx context.Context, tx *Tx, req booking.UpdateBookingRequest) (bool, error) {
+	// Booking exists
+	_, err := findBookingByID(ctx, tx, req.ID)
+	var nfe *NotFoundError
+	if errors.As(err, &nfe) {
+		return false, booking.WrapNotFoundError("booking")
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to find booking by id: %w", err)
+	}
+
+	// Overlaps with too many existing bookings
+	r, err := findResourceByID(ctx, tx, req.ID)
+	if errors.As(err, &nfe) {
+		return false, booking.WrapNotFoundError("booking")
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to find resource by id: %w", err)
+	}
+	if r.QuantityAvailable != nil {
+		obc, err := countOverlappingBookings(ctx, tx, req.ResourceID, req.StartTime, req.EndTime)
+		if err != nil {
+
+		}
+		if obc >= *r.QuantityAvailable {
+			return false, booking.Errorf(booking.EBOOKINGCONFLICT, "Failed to create")
+		}
+	}
+	return false, nil
 }
 
 func updateBooking(ctx context.Context, tx *Tx, req booking.UpdateBookingRequest) error {
@@ -295,6 +327,7 @@ func updateBooking(ctx context.Context, tx *Tx, req booking.UpdateBookingRequest
 			entbooking.HasResourceWith(resource.OrganizationId(orgID)),
 		).
 		Save(ctx)
+	return nil
 }
 
 // Permanently removes a booking by ID. Only the booking owner may delete a
