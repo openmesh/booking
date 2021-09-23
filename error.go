@@ -21,8 +21,12 @@ const (
 	// ERESOURCENOTFOUND indicates that a request was made to retrieve a resource
 	// that does not exist.
 	ERESOURCENOTFOUND = "resource_not_found"
-	ENOTIMPLEMENTED   = "not_implemented"
-	EUNAUTHORIZED     = "unauthorized"
+	// ERESOURCENAMECONFLICT indicates that a request was to create a resource
+	// with a name already taken by an existing resource within the same
+	// organiztion.
+	ERESOURCENAMECONFLICT = "resource_name_conflict"
+	ENOTIMPLEMENTED       = "not_implemented"
+	EUNAUTHORIZED         = "unauthorized"
 )
 
 // Error represents an application-specific error. Application errors can be

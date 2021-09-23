@@ -2,6 +2,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/openmesh/booking"
@@ -19,46 +20,160 @@ func NewResourceService(client *Client) *resourceService {
 	}
 }
 
+// FindResourceByID retrieves a single resource by ID along with associated availabilities.
+// Returns ERESOURCENOTFOUND if resource does not exist or user does not have
+// permission to view it.
 func (s *resourceService) FindResourceByID(
 	ctx context.Context,
 	req booking.FindResourceByIDRequest,
 ) booking.FindResourceByIDResponse {
-	r, err := s.client.Resource.
-		Query().
-		Where(resource.ID(req.ID)).
-		WithSlots().
-		First(ctx)
-	if _, ok := err.(*NotFoundError); ok {
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
 		return booking.FindResourceByIDResponse{
-			Err: booking.Error{
-				Code:   booking.ENOTFOUND,
-				Detail: fmt.Sprintf("'Resource' with ID '%d' could not be found", req.ID),
-				Title:  "Resource not found",
-				Params: nil,
-			},
+			Err: fmt.Errorf("failed to start transaction: %w", err),
 		}
 	}
+
+	r, err := findResourceByID(ctx, tx, req.ID)
 	if err != nil {
 		return booking.FindResourceByIDResponse{Err: err}
 	}
+
+	if r.Edges.Slots, err = r.QuerySlots().All(ctx); err != nil {
+		return booking.FindResourceByIDResponse{Err: err}
+	}
+
 	return booking.FindResourceByIDResponse{Resource: r.toModel()}
 }
 
-func findResourceByID(ctx context.Context, tx *Tx, id int) (*Resource, error) {
-	orgID := booking.OrganizationIDFromContext(ctx)
-	return tx.Resource.
-		Query().
-		Where(resource.ID(id), resource.OrganizationId(orgID)).
-		First(ctx)
-}
-
+// FindResources retrieves a lit of resources based on a filter. Only returns
+// resources that accessible to the user. Also returns a count of total matching resources
+// which may be different from the number of returned bookings if the "Limit" field is set.
 func (s *resourceService) FindResources(ctx context.Context, req booking.FindResourcesRequest) booking.FindResourcesResponse {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
-		return booking.FindResourcesResponse{Err: err}
+		return booking.FindResourcesResponse{Err: fmt.Errorf("failed to start transaction: %w", err)}
 	}
-	query := tx.Resource.Query().
-		Where(resource.OrganizationId(booking.OrganizationIDFromContext(ctx)))
+
+	r, totalItems, err := findResources(ctx, tx, req)
+	if err != nil {
+		return booking.FindResourcesResponse{Err: fmt.Errorf("failed to find resources: %w", err)}
+	}
+
+	return booking.FindResourcesResponse{
+		Resources:  Resources(r).toModels(),
+		TotalItems: totalItems,
+	}
+}
+
+// CreateResource creates a new resource and assigns the current user as the owner.
+// Returns the created Resource.
+func (s *resourceService) CreateResource(
+	ctx context.Context,
+	req booking.CreateResourceRequest,
+) booking.CreateResourceResponse {
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return booking.CreateResourceResponse{Err: fmt.Errorf("failed to start transaction: %w", err)}
+	}
+	defer tx.Rollback()
+
+	err = checkForResourceNameConflict(ctx, tx, req.Name)
+	if err != nil {
+		return booking.CreateResourceResponse{Err: fmt.Errorf("failed resource name check: %w", err)}
+	}
+
+	r, err := createResource(ctx, tx, req)
+	if err != nil {
+		return booking.CreateResourceResponse{Err: fmt.Errorf("failed to create resource: %w", err)}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return booking.CreateResourceResponse{Err: fmt.Errorf("failed to commit transaction: %w", err)}
+	}
+
+	return booking.CreateResourceResponse{
+		Resource: r.toModel(),
+		Err:      tx.Commit(),
+	}
+}
+
+// UpdateResource updates an existing resource by ID. Only the resource owner can update a
+// resource. Returns the new resource state even if there was an error during update.
+//
+// Returns ERESOURCENOTFOUND if the resource does not exist or the user does not have
+// permission to update it.
+func (s *resourceService) UpdateResource(
+	ctx context.Context,
+	req booking.UpdateResourceRequest,
+) booking.UpdateResourceResponse {
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return booking.UpdateResourceResponse{Err: fmt.Errorf("failed to start transaction: %w", err)}
+	}
+
+	err = checkForResourceNameConflict(ctx, tx, req.Name)
+	if err != nil {
+		return booking.UpdateResourceResponse{Err: fmt.Errorf("failed resource name check: %w", err)}
+	}
+
+	r, err := updateResource(ctx, tx, req)
+	if err != nil {
+		return booking.UpdateResourceResponse{Err: err}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return booking.UpdateResourceResponse{Err: fmt.Errorf("failed to commit transaction: %w", err)}
+	}
+
+	return booking.UpdateResourceResponse{
+		Resource: r.toModel(),
+	}
+}
+
+// DeleteResource permanently removes a resource by ID. Only the resource owner may delete a
+// resource. Returns ERESOURCENOTFOUND if the resource does not exist or the user does not have
+// permission to delete it.
+func (s *resourceService) DeleteResource(ctx context.Context, req booking.DeleteResourceRequest) booking.DeleteResourceResponse {
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return booking.DeleteResourceResponse{Err: fmt.Errorf("failed to start transaction: %w", err)}
+	}
+
+	err = deleteResource(ctx, tx, req.ID)
+	if err != nil {
+		return booking.DeleteResourceResponse{Err: fmt.Errorf("failed to delete resource")}
+	}
+
+	return booking.DeleteResourceResponse{}
+}
+
+// findResourceByID retrieves a single resource by ID from the database.
+func findResourceByID(ctx context.Context, tx *Tx, id int) (*Resource, error) {
+	r, err := tx.Resource.
+		Query().
+		Where(resource.ID(id)).
+		WithSlots().
+		First(ctx)
+
+	var nfe *NotFoundError
+	if errors.As(err, &nfe) {
+		return nil, booking.Errorf(booking.ERESOURCENOTFOUND, "Could not find resource with ID %d", id)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
+// findResources retrieves a slice of resources from the database based on a set
+// of queryable parameters. Also returns the total number of records that meet
+// the critieria before offsets and limits are applied.
+func findResources(ctx context.Context, tx *Tx, req booking.FindResourcesRequest) ([]*Resource, int, error) {
+	query := tx.Resource.Query()
 	if req.ID != nil {
 		query = query.Where(resource.ID(*req.ID))
 	}
@@ -70,7 +185,7 @@ func (s *resourceService) FindResources(ctx context.Context, req booking.FindRes
 	}
 	totalItems, err := query.Count(ctx)
 	if err != nil {
-		return booking.FindResourcesResponse{Err: err}
+		return nil, 0, fmt.Errorf("failed to count resources: %w", err)
 	}
 	query = query.Offset(req.Offset)
 	if req.Limit == 0 {
@@ -78,42 +193,35 @@ func (s *resourceService) FindResources(ctx context.Context, req booking.FindRes
 	} else {
 		query = query.Limit(req.Limit)
 	}
-	resources, err := query.WithSlots().All(ctx)
+	r, err := query.WithSlots().All(ctx)
 	if err != nil {
-		return booking.FindResourcesResponse{Err: err}
+		return nil, 0, fmt.Errorf("failed to query resources: %w", err)
 	}
 
-	return booking.FindResourcesResponse{
-		Resources:  Resources(resources).toModels(),
-		TotalItems: totalItems,
-	}
+	return r, totalItems, nil
 }
 
-func (s *resourceService) CreateResource(ctx context.Context, req booking.CreateResourceRequest) booking.CreateResourceResponse {
-	orgID := booking.OrganizationIDFromContext(ctx)
-
-	tx, err := s.client.Tx(ctx)
+// checkForResourceNameConflict queries the database to see if a resource with a
+// given name exists. Returns booking.ERESOURCENAMECONFLICT if a matching
+// resource is found.
+func checkForResourceNameConflict(ctx context.Context, tx *Tx, name string) error {
+	count, err := tx.Resource.
+		Query().
+		Where(resource.Name(name)).
+		Count(ctx)
 	if err != nil {
-		return booking.CreateResourceResponse{Err: err}
-	}
-
-	// Check for existing resource with same name.
-	count, err := tx.Resource.Query().Where(resource.Name(req.Name), resource.OrganizationId(orgID)).Count(ctx)
-	if err != nil {
-		return booking.CreateResourceResponse{Err: err}
+		return fmt.Errorf("failed to count resources: %w", err)
 	}
 	if count > 0 {
-		return booking.CreateResourceResponse{
-			Err: booking.Error{
-				Code:   booking.ECONFLICT,
-				Detail: "One or more validation errors occurred while processing your request.",
-				Title:  "Invalid request",
-				Params: []booking.ValidationError{{Name: "name", Reason: fmt.Sprintf("A resource with name '%s' already exists", req.Name)}},
-			},
-		}
+		return booking.Errorf(booking.ERESOURCENAMECONFLICT, "A resource with name '%s' already exists", name)
 	}
+	return nil
+}
 
-	// Create resource.
+// createResource creates a resource in the database. Also creates slots defined
+// in the Slots parameter of the struct.
+func createResource(ctx context.Context, tx *Tx, req booking.CreateResourceRequest) (*Resource, error) {
+	orgID := booking.OrganizationIDFromContext(ctx)
 	r, err := tx.Resource.
 		Create().
 		SetBookingPrice(req.BookingPrice).
@@ -125,60 +233,40 @@ func (s *resourceService) CreateResource(ctx context.Context, req booking.Create
 		SetTimezone(req.Timezone).
 		Save(ctx)
 	if err != nil {
-		return booking.CreateResourceResponse{Err: tx.Rollback()}
+		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
-	// Create slots for resource.
 	for _, s := range req.Slots {
-		slot, err := tx.Slot.
-			Create().
-			SetDay(s.Day).
-			SetEndTime(s.EndTime).
-			SetStartTime(s.StartTime).
-			SetNillableQuantity(s.Quantity).
-			SetResource(r).
-			Save(ctx)
+		ns, err := createSlot(ctx, tx, s, r)
 		if err != nil {
-			return booking.CreateResourceResponse{Err: tx.Rollback()}
+			return nil, fmt.Errorf("failed to create slot: %w", err)
 		}
-		r.Edges.Slots = append(r.Edges.Slots, slot)
+		r.Edges.Slots = append(r.Edges.Slots, ns)
 	}
 
-	if err != nil {
-		return booking.CreateResourceResponse{Err: tx.Rollback()}
-	}
-
-	return booking.CreateResourceResponse{
-		Resource: r.toModel(),
-		Err:      tx.Commit(),
-	}
+	return r, nil
 }
 
-func (s *resourceService) UpdateResource(ctx context.Context, req booking.UpdateResourceRequest) booking.UpdateResourceResponse {
-	tx, err := s.client.Tx(ctx)
+// createSlot creates a slot in the database.
+func createSlot(ctx context.Context, tx *Tx, s *booking.Slot, r *Resource) (*Slot, error) {
+	ns, err := tx.Slot.
+		Create().
+		SetDay(s.Day).
+		SetEndTime(s.EndTime).
+		SetStartTime(s.StartTime).
+		SetNillableQuantity(s.Quantity).
+		SetResource(r).
+		Save(ctx)
 	if err != nil {
-		return booking.UpdateResourceResponse{Err: err}
+		return nil, fmt.Errorf("failed to create slot: %w", err)
 	}
+	return ns, nil
+}
 
-	// TODO check for not found
-
-	organizationID := booking.OrganizationIDFromContext(ctx)
-	count, err := tx.Resource.Query().Where(resource.Name(req.Name), resource.OrganizationId(organizationID)).Count(ctx)
-	if err != nil {
-		return booking.UpdateResourceResponse{Err: err}
-	}
-	if count > 0 {
-		return booking.UpdateResourceResponse{
-			Err: booking.Error{
-				Code:   booking.ECONFLICT,
-				Detail: "One or more validation errors occurred while processing your request.",
-				Title:  "Invalid request",
-				Params: []booking.ValidationError{{Name: "name", Reason: fmt.Sprintf("A resource with name '%s' already exists", req.Name)}},
-			},
-		}
-	}
-
-	// Update resource
+// updateResource updates a resource in the database. Also updates the slots
+// associated with the resource. It achieves this by deleting the existing slot
+// records and inserting new ones.
+func updateResource(ctx context.Context, tx *Tx, req booking.UpdateResourceRequest) (*Resource, error) {
 	r, err := tx.Resource.
 		UpdateOneID(req.ID).
 		SetName(req.Name).
@@ -189,77 +277,48 @@ func (s *resourceService) UpdateResource(ctx context.Context, req booking.Update
 		SetBookingPrice(req.BookingPrice).
 		Save(ctx)
 	if err != nil {
-		return booking.UpdateResourceResponse{Err: tx.Rollback()}
+		return nil, fmt.Errorf("failed to update resource: %w", err)
 	}
 
-	// Confirm that resource belongs to currently authenticated organization.
-	if organizationID != r.OrganizationId {
-		return booking.UpdateResourceResponse{
-			Err: booking.Error{
-				Code:   booking.ENOTFOUND,
-				Detail: fmt.Sprintf("'Resource' with ID '%d' could not be found", req.ID),
-				Title:  "Resource not found",
-				Params: nil,
-			},
-		}
-	}
-
-	// Remove existing slots
-	_, err = tx.Slot.Delete().Where(slot.ResourceId(req.ID)).Exec(ctx)
+	err = deleteResourceSlots(ctx, tx, r.ID)
 	if err != nil {
-		return booking.UpdateResourceResponse{Err: tx.Rollback()}
+		return nil, fmt.Errorf("failed to delete resource slots: %w", err)
 	}
 
-	// Create new slots for resource
 	for _, s := range req.Slots {
-		slot, err := tx.Slot.Create().
-			SetDay(s.Day).
-			SetEndTime(s.EndTime).
-			SetStartTime(s.StartTime).
-			SetNillableQuantity(s.Quantity).
-			SetResource(r).
-			Save(ctx)
+		ns, err := createSlot(ctx, tx, s, r)
 		if err != nil {
-			return booking.UpdateResourceResponse{Err: tx.Rollback()}
+			return nil, fmt.Errorf("failed to create slot: %w", err)
 		}
-		r.Edges.Slots = append(r.Edges.Slots, slot)
+		r.Edges.Slots = append(r.Edges.Slots, ns)
 	}
 
-	if err != nil {
-		return booking.UpdateResourceResponse{Err: tx.Rollback()}
-	}
-
-	return booking.UpdateResourceResponse{
-		Resource: r.toModel(),
-		Err:      tx.Commit(),
-	}
+	return r, nil
 }
 
-func (s *resourceService) DeleteResource(ctx context.Context, req booking.DeleteResourceRequest) booking.DeleteResourceResponse {
-	tx, err := s.client.Tx(ctx)
+// deleteResourceSlots deletes all slots associated with a given resource.
+func deleteResourceSlots(ctx context.Context, tx *Tx, rid int) error {
+	_, err := tx.Slot.Delete().Where(slot.ResourceId(rid)).Exec(ctx)
 	if err != nil {
-		return booking.DeleteResourceResponse{Err: err}
+		return fmt.Errorf("failed to delete slots for resource: %w", err)
 	}
-	orgID := booking.OrganizationIDFromContext(ctx)
-	deleted, err := tx.Resource.
-		Delete().
-		Where(resource.ID(req.ID), resource.OrganizationId(orgID)).
+	return nil
+}
+
+func deleteResource(ctx context.Context, tx *Tx, id int) error {
+	err := tx.Resource.
+		DeleteOneID(id).
 		Exec(ctx)
 	if err != nil {
-		return booking.DeleteResourceResponse{Err: err}
+		return fmt.Errorf("failed to delete resource: %w", err)
 	}
 
-	if deleted == 0 {
-		return booking.DeleteResourceResponse{
-			Err: booking.Error{
-				Code:   booking.ENOTFOUND,
-				Detail: fmt.Sprintf("'Resource' with ID '%d' could not be found", req.ID),
-				Title:  "Resource not found",
-				Params: nil,
-			},
-		}
+	err = deleteResourceSlots(ctx, tx, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete resource slots: %w", err)
 	}
-	return booking.DeleteResourceResponse{}
+
+	return nil
 }
 
 func (r *Resource) toModel() *booking.Resource {

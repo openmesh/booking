@@ -118,12 +118,13 @@ func parseResponseError(resp *http.Response) error {
 
 // lookup of application error codes to HTTP status codes.
 var codes = map[string]int{
-	booking.ECONFLICT:       http.StatusConflict,
-	booking.EINVALID:        http.StatusBadRequest,
-	booking.ENOTFOUND:       http.StatusNotFound,
-	booking.ENOTIMPLEMENTED: http.StatusNotImplemented,
-	booking.EUNAUTHORIZED:   http.StatusUnauthorized,
-	booking.EINTERNAL:       http.StatusInternalServerError,
+	booking.ECONFLICT:             http.StatusConflict,
+	booking.EINVALID:              http.StatusBadRequest,
+	booking.ENOTFOUND:             http.StatusNotFound,
+	booking.ENOTIMPLEMENTED:       http.StatusNotImplemented,
+	booking.EUNAUTHORIZED:         http.StatusUnauthorized,
+	booking.EINTERNAL:             http.StatusInternalServerError,
+	booking.ERESOURCENAMECONFLICT: http.StatusConflict,
 }
 
 // ErrorStatusCode returns the associated HTTP status code for a booking error code.
@@ -165,10 +166,11 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	}
 	// If the error is an application error then get the status code and body from the error.
 	// Otherwise, return a 500 error status code.
-	if _, ok := err.(booking.Error); ok {
+	var be *booking.Error
+	if errors.As(err, &be) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(ErrorStatusCode(err.(booking.Error).Code))
-		json.NewEncoder(w).Encode(err)
+		w.WriteHeader(ErrorStatusCode(be.Code))
+		json.NewEncoder(w).Encode(be)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 	}

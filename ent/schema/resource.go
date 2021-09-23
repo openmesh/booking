@@ -5,8 +5,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/privacy"
-	"github.com/openmesh/booking/rule"
-	// "github.com/openmesh/booking/ent/privacy"
+	"github.com/openmesh/booking/ent/rule"
 )
 
 // Resource holds the schema definition for the Resource entity.
@@ -53,11 +52,11 @@ func (Resource) Mixin() []ent.Mixin {
 
 func (Resource) Policy() ent.Policy {
 	return privacy.Policy{
-		// Mutation: privacy.MutationPolicy{
-		// 	rule.
-		// },
 		Query: privacy.QueryPolicy{
-			rule.FilterOrganizationRuleResource(),
+			rule.FilterResourceOrganizationQueryRule(),
+		},
+		Mutation: privacy.MutationPolicy{
+			rule.FilterResourceOrganizationMutationRule(),
 		},
 	}
 }
