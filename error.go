@@ -19,8 +19,15 @@ const (
 	EINVALID         = "invalid"
 	ENOTFOUND        = "not_found"
 	// ERESOURCENOTFOUND indicates that a request was made to retrieve a resource
-	// that does not exist.
+	// that does not exist or is not accessible by the requester.
 	ERESOURCENOTFOUND = "resource_not_found"
+	// EUNAVAILABILITYNOTFOUND indicates that a request was made to retrieve an
+	// unavailability that does not exist or is not accessible by the requester.
+	EUNAVAILABILITYNOTFOUND = "unavailability_not_found"
+	// EUNAVAILABILITYTIMECONFLICT indicates that a request was made to create
+	// update an unavailability which would have conflicted with an existing
+	// unavailability.
+	EUNAVAILABILITYTIMECONFLICT = "unavailability_time_conflict"
 	// ERESOURCENAMECONFLICT indicates that a request was to create a resource
 	// with a name already taken by an existing resource within the same
 	// organiztion.

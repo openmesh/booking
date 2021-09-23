@@ -39,7 +39,8 @@ func (s *resourceService) FindResourceByID(
 		return booking.FindResourceByIDResponse{Err: err}
 	}
 
-	if r.Edges.Slots, err = r.QuerySlots().All(ctx); err != nil {
+	r.Edges.Slots, err = r.QuerySlots().All(ctx)
+	if err != nil {
 		return booking.FindResourceByIDResponse{Err: err}
 	}
 
@@ -158,7 +159,6 @@ func findResourceByID(ctx context.Context, tx *Tx, id int) (*Resource, error) {
 	r, err := tx.Resource.
 		Query().
 		Where(resource.ID(id)).
-		WithSlots().
 		First(ctx)
 
 	var nfe *NotFoundError
