@@ -4,6 +4,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/privacy"
+	"github.com/openmesh/booking/ent/rule"
 )
 
 // Unavailability holds the schema definition for the Unavailability entity.
@@ -17,7 +19,6 @@ func (Unavailability) Fields() []ent.Field {
 		field.Time("startTime"),
 		field.Time("endTime"),
 		field.Int("resourceId"),
-		field.Int("organizationId"),
 	}
 }
 
@@ -29,11 +30,6 @@ func (Unavailability) Edges() []ent.Edge {
 			Field("resourceId").
 			Unique().
 			Required(),
-		edge.From("organization", Organization.Type).
-			Ref("unavailabilities").
-			Field("organizationId").
-			Unique().
-			Required(),
 	}
 }
 
@@ -41,5 +37,16 @@ func (Unavailability) Edges() []ent.Edge {
 func (Unavailability) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		Timestamp{},
+	}
+}
+
+func (Unavailability) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			rule.FilterUnavailabilityOrganizationQueryRule(),
+		},
+		Mutation: privacy.MutationPolicy{
+			rule.FilterResourceOrganizationMutationRule(),
+		},
 	}
 }

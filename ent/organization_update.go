@@ -10,11 +10,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
-	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 )
 
@@ -85,36 +83,6 @@ func (ou *OrganizationUpdate) AddResources(r ...*Resource) *OrganizationUpdate {
 	return ou.AddResourceIDs(ids...)
 }
 
-// AddBookingIDs adds the "bookings" edge to the Booking entity by IDs.
-func (ou *OrganizationUpdate) AddBookingIDs(ids ...int) *OrganizationUpdate {
-	ou.mutation.AddBookingIDs(ids...)
-	return ou
-}
-
-// AddBookings adds the "bookings" edges to the Booking entity.
-func (ou *OrganizationUpdate) AddBookings(b ...*Booking) *OrganizationUpdate {
-	ids := make([]int, len(b))
-	for i := range b {
-		ids[i] = b[i].ID
-	}
-	return ou.AddBookingIDs(ids...)
-}
-
-// AddUnavailabilityIDs adds the "unavailabilities" edge to the Unavailability entity by IDs.
-func (ou *OrganizationUpdate) AddUnavailabilityIDs(ids ...int) *OrganizationUpdate {
-	ou.mutation.AddUnavailabilityIDs(ids...)
-	return ou
-}
-
-// AddUnavailabilities adds the "unavailabilities" edges to the Unavailability entity.
-func (ou *OrganizationUpdate) AddUnavailabilities(u ...*Unavailability) *OrganizationUpdate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ou.AddUnavailabilityIDs(ids...)
-}
-
 // Mutation returns the OrganizationMutation object of the builder.
 func (ou *OrganizationUpdate) Mutation() *OrganizationMutation {
 	return ou.mutation
@@ -160,48 +128,6 @@ func (ou *OrganizationUpdate) RemoveResources(r ...*Resource) *OrganizationUpdat
 		ids[i] = r[i].ID
 	}
 	return ou.RemoveResourceIDs(ids...)
-}
-
-// ClearBookings clears all "bookings" edges to the Booking entity.
-func (ou *OrganizationUpdate) ClearBookings() *OrganizationUpdate {
-	ou.mutation.ClearBookings()
-	return ou
-}
-
-// RemoveBookingIDs removes the "bookings" edge to Booking entities by IDs.
-func (ou *OrganizationUpdate) RemoveBookingIDs(ids ...int) *OrganizationUpdate {
-	ou.mutation.RemoveBookingIDs(ids...)
-	return ou
-}
-
-// RemoveBookings removes "bookings" edges to Booking entities.
-func (ou *OrganizationUpdate) RemoveBookings(b ...*Booking) *OrganizationUpdate {
-	ids := make([]int, len(b))
-	for i := range b {
-		ids[i] = b[i].ID
-	}
-	return ou.RemoveBookingIDs(ids...)
-}
-
-// ClearUnavailabilities clears all "unavailabilities" edges to the Unavailability entity.
-func (ou *OrganizationUpdate) ClearUnavailabilities() *OrganizationUpdate {
-	ou.mutation.ClearUnavailabilities()
-	return ou
-}
-
-// RemoveUnavailabilityIDs removes the "unavailabilities" edge to Unavailability entities by IDs.
-func (ou *OrganizationUpdate) RemoveUnavailabilityIDs(ids ...int) *OrganizationUpdate {
-	ou.mutation.RemoveUnavailabilityIDs(ids...)
-	return ou
-}
-
-// RemoveUnavailabilities removes "unavailabilities" edges to Unavailability entities.
-func (ou *OrganizationUpdate) RemoveUnavailabilities(u ...*Unavailability) *OrganizationUpdate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ou.RemoveUnavailabilityIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -421,114 +347,6 @@ func (ou *OrganizationUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if ou.mutation.BookingsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.BookingsTable,
-			Columns: []string{organization.BookingsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: booking.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ou.mutation.RemovedBookingsIDs(); len(nodes) > 0 && !ou.mutation.BookingsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.BookingsTable,
-			Columns: []string{organization.BookingsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: booking.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ou.mutation.BookingsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.BookingsTable,
-			Columns: []string{organization.BookingsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: booking.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if ou.mutation.UnavailabilitiesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.UnavailabilitiesTable,
-			Columns: []string{organization.UnavailabilitiesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: unavailability.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ou.mutation.RemovedUnavailabilitiesIDs(); len(nodes) > 0 && !ou.mutation.UnavailabilitiesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.UnavailabilitiesTable,
-			Columns: []string{organization.UnavailabilitiesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: unavailability.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ou.mutation.UnavailabilitiesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.UnavailabilitiesTable,
-			Columns: []string{organization.UnavailabilitiesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: unavailability.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	if n, err = sqlgraph.UpdateNodes(ctx, ou.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{organization.Label}
@@ -602,36 +420,6 @@ func (ouo *OrganizationUpdateOne) AddResources(r ...*Resource) *OrganizationUpda
 	return ouo.AddResourceIDs(ids...)
 }
 
-// AddBookingIDs adds the "bookings" edge to the Booking entity by IDs.
-func (ouo *OrganizationUpdateOne) AddBookingIDs(ids ...int) *OrganizationUpdateOne {
-	ouo.mutation.AddBookingIDs(ids...)
-	return ouo
-}
-
-// AddBookings adds the "bookings" edges to the Booking entity.
-func (ouo *OrganizationUpdateOne) AddBookings(b ...*Booking) *OrganizationUpdateOne {
-	ids := make([]int, len(b))
-	for i := range b {
-		ids[i] = b[i].ID
-	}
-	return ouo.AddBookingIDs(ids...)
-}
-
-// AddUnavailabilityIDs adds the "unavailabilities" edge to the Unavailability entity by IDs.
-func (ouo *OrganizationUpdateOne) AddUnavailabilityIDs(ids ...int) *OrganizationUpdateOne {
-	ouo.mutation.AddUnavailabilityIDs(ids...)
-	return ouo
-}
-
-// AddUnavailabilities adds the "unavailabilities" edges to the Unavailability entity.
-func (ouo *OrganizationUpdateOne) AddUnavailabilities(u ...*Unavailability) *OrganizationUpdateOne {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ouo.AddUnavailabilityIDs(ids...)
-}
-
 // Mutation returns the OrganizationMutation object of the builder.
 func (ouo *OrganizationUpdateOne) Mutation() *OrganizationMutation {
 	return ouo.mutation
@@ -677,48 +465,6 @@ func (ouo *OrganizationUpdateOne) RemoveResources(r ...*Resource) *OrganizationU
 		ids[i] = r[i].ID
 	}
 	return ouo.RemoveResourceIDs(ids...)
-}
-
-// ClearBookings clears all "bookings" edges to the Booking entity.
-func (ouo *OrganizationUpdateOne) ClearBookings() *OrganizationUpdateOne {
-	ouo.mutation.ClearBookings()
-	return ouo
-}
-
-// RemoveBookingIDs removes the "bookings" edge to Booking entities by IDs.
-func (ouo *OrganizationUpdateOne) RemoveBookingIDs(ids ...int) *OrganizationUpdateOne {
-	ouo.mutation.RemoveBookingIDs(ids...)
-	return ouo
-}
-
-// RemoveBookings removes "bookings" edges to Booking entities.
-func (ouo *OrganizationUpdateOne) RemoveBookings(b ...*Booking) *OrganizationUpdateOne {
-	ids := make([]int, len(b))
-	for i := range b {
-		ids[i] = b[i].ID
-	}
-	return ouo.RemoveBookingIDs(ids...)
-}
-
-// ClearUnavailabilities clears all "unavailabilities" edges to the Unavailability entity.
-func (ouo *OrganizationUpdateOne) ClearUnavailabilities() *OrganizationUpdateOne {
-	ouo.mutation.ClearUnavailabilities()
-	return ouo
-}
-
-// RemoveUnavailabilityIDs removes the "unavailabilities" edge to Unavailability entities by IDs.
-func (ouo *OrganizationUpdateOne) RemoveUnavailabilityIDs(ids ...int) *OrganizationUpdateOne {
-	ouo.mutation.RemoveUnavailabilityIDs(ids...)
-	return ouo
-}
-
-// RemoveUnavailabilities removes "unavailabilities" edges to Unavailability entities.
-func (ouo *OrganizationUpdateOne) RemoveUnavailabilities(u ...*Unavailability) *OrganizationUpdateOne {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ouo.RemoveUnavailabilityIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -954,114 +700,6 @@ func (ouo *OrganizationUpdateOne) sqlSave(ctx context.Context) (_node *Organizat
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: resource.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if ouo.mutation.BookingsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.BookingsTable,
-			Columns: []string{organization.BookingsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: booking.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ouo.mutation.RemovedBookingsIDs(); len(nodes) > 0 && !ouo.mutation.BookingsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.BookingsTable,
-			Columns: []string{organization.BookingsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: booking.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ouo.mutation.BookingsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.BookingsTable,
-			Columns: []string{organization.BookingsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: booking.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if ouo.mutation.UnavailabilitiesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.UnavailabilitiesTable,
-			Columns: []string{organization.UnavailabilitiesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: unavailability.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ouo.mutation.RemovedUnavailabilitiesIDs(); len(nodes) > 0 && !ouo.mutation.UnavailabilitiesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.UnavailabilitiesTable,
-			Columns: []string{organization.UnavailabilitiesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: unavailability.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ouo.mutation.UnavailabilitiesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.UnavailabilitiesTable,
-			Columns: []string{organization.UnavailabilitiesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: unavailability.FieldID,
 				},
 			},
 		}

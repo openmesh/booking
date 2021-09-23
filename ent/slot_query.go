@@ -342,6 +342,12 @@ func (sq *SlotQuery) prepareQuery(ctx context.Context) error {
 		}
 		sq.sql = prev
 	}
+	if slot.Policy == nil {
+		return errors.New("ent: uninitialized slot.Policy (forgotten import ent/runtime?)")
+	}
+	if err := slot.Policy.EvalQuery(ctx, sq); err != nil {
+		return err
+	}
 	return nil
 }
 

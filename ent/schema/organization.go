@@ -26,8 +26,6 @@ func (Organization) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("users", User.Type),
 		edge.To("resources", Resource.Type),
-		edge.To("bookings", Booking.Type),
-		edge.To("unavailabilities", Unavailability.Type),
 	}
 }
 

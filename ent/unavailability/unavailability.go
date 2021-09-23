@@ -4,6 +4,8 @@ package unavailability
 
 import (
 	"time"
+
+	"entgo.io/ent"
 )
 
 const (
@@ -21,12 +23,8 @@ const (
 	FieldEndTime = "end_time"
 	// FieldResourceId holds the string denoting the resourceid field in the database.
 	FieldResourceId = "resource_id"
-	// FieldOrganizationId holds the string denoting the organizationid field in the database.
-	FieldOrganizationId = "organization_id"
 	// EdgeResource holds the string denoting the resource edge name in mutations.
 	EdgeResource = "resource"
-	// EdgeOrganization holds the string denoting the organization edge name in mutations.
-	EdgeOrganization = "organization"
 	// Table holds the table name of the unavailability in the database.
 	Table = "unavailabilities"
 	// ResourceTable is the table that holds the resource relation/edge.
@@ -36,13 +34,6 @@ const (
 	ResourceInverseTable = "resources"
 	// ResourceColumn is the table column denoting the resource relation/edge.
 	ResourceColumn = "resource_id"
-	// OrganizationTable is the table that holds the organization relation/edge.
-	OrganizationTable = "unavailabilities"
-	// OrganizationInverseTable is the table name for the Organization entity.
-	// It exists in this package in order to avoid circular dependency with the "organization" package.
-	OrganizationInverseTable = "organizations"
-	// OrganizationColumn is the table column denoting the organization relation/edge.
-	OrganizationColumn = "organization_id"
 )
 
 // Columns holds all SQL columns for unavailability fields.
@@ -53,7 +44,6 @@ var Columns = []string{
 	FieldStartTime,
 	FieldEndTime,
 	FieldResourceId,
-	FieldOrganizationId,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -66,7 +56,15 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+// Note that the variables below are initialized by the runtime
+// package on the initialization of the application. Therefore,
+// it should be imported in the main as follows:
+//
+//	import _ "github.com/openmesh/booking/ent/runtime"
+//
 var (
+	Hooks  [1]ent.Hook
+	Policy ent.Policy
 	// DefaultCreatedAt holds the default value on creation for the "createdAt" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updatedAt" field.

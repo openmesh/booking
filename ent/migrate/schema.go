@@ -42,7 +42,6 @@ var (
 		{Name: "status", Type: field.TypeString},
 		{Name: "start_time", Type: field.TypeTime},
 		{Name: "end_time", Type: field.TypeTime},
-		{Name: "organization_id", Type: field.TypeInt, Nullable: true},
 		{Name: "resource_id", Type: field.TypeInt, Nullable: true},
 	}
 	// BookingsTable holds the schema information for the "bookings" table.
@@ -52,14 +51,8 @@ var (
 		PrimaryKey: []*schema.Column{BookingsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "bookings_organizations_bookings",
-				Columns:    []*schema.Column{BookingsColumns[6]},
-				RefColumns: []*schema.Column{OrganizationsColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-			{
 				Symbol:     "bookings_resources_bookings",
-				Columns:    []*schema.Column{BookingsColumns[7]},
+				Columns:    []*schema.Column{BookingsColumns[6]},
 				RefColumns: []*schema.Column{ResourcesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -204,7 +197,6 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "start_time", Type: field.TypeTime},
 		{Name: "end_time", Type: field.TypeTime},
-		{Name: "organization_id", Type: field.TypeInt, Nullable: true},
 		{Name: "resource_id", Type: field.TypeInt, Nullable: true},
 	}
 	// UnavailabilitiesTable holds the schema information for the "unavailabilities" table.
@@ -214,14 +206,8 @@ var (
 		PrimaryKey: []*schema.Column{UnavailabilitiesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "unavailabilities_organizations_unavailabilities",
-				Columns:    []*schema.Column{UnavailabilitiesColumns[5]},
-				RefColumns: []*schema.Column{OrganizationsColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-			{
 				Symbol:     "unavailabilities_resources_unavailabilities",
-				Columns:    []*schema.Column{UnavailabilitiesColumns[6]},
+				Columns:    []*schema.Column{UnavailabilitiesColumns[5]},
 				RefColumns: []*schema.Column{ResourcesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -266,14 +252,12 @@ var (
 
 func init() {
 	AuthsTable.ForeignKeys[0].RefTable = UsersTable
-	BookingsTable.ForeignKeys[0].RefTable = OrganizationsTable
-	BookingsTable.ForeignKeys[1].RefTable = ResourcesTable
+	BookingsTable.ForeignKeys[0].RefTable = ResourcesTable
 	BookingMetadataTable.ForeignKeys[0].RefTable = BookingsTable
 	OrganizationOwnershipsTable.ForeignKeys[0].RefTable = UsersTable
 	OrganizationOwnershipsTable.ForeignKeys[1].RefTable = OrganizationsTable
 	ResourcesTable.ForeignKeys[0].RefTable = OrganizationsTable
 	SlotsTable.ForeignKeys[0].RefTable = ResourcesTable
-	UnavailabilitiesTable.ForeignKeys[0].RefTable = OrganizationsTable
-	UnavailabilitiesTable.ForeignKeys[1].RefTable = ResourcesTable
+	UnavailabilitiesTable.ForeignKeys[0].RefTable = ResourcesTable
 	UsersTable.ForeignKeys[0].RefTable = OrganizationsTable
 }

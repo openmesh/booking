@@ -12,7 +12,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/bookingmetadatum"
-	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/resource"
 )
 
@@ -75,12 +74,6 @@ func (bc *BookingCreate) SetResourceId(i int) *BookingCreate {
 	return bc
 }
 
-// SetOrganizationId sets the "organizationId" field.
-func (bc *BookingCreate) SetOrganizationId(i int) *BookingCreate {
-	bc.mutation.SetOrganizationId(i)
-	return bc
-}
-
 // AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by IDs.
 func (bc *BookingCreate) AddMetadatumIDs(ids ...int) *BookingCreate {
 	bc.mutation.AddMetadatumIDs(ids...)
@@ -107,17 +100,6 @@ func (bc *BookingCreate) SetResource(r *Resource) *BookingCreate {
 	return bc.SetResourceID(r.ID)
 }
 
-// SetOrganizationID sets the "organization" edge to the Organization entity by ID.
-func (bc *BookingCreate) SetOrganizationID(id int) *BookingCreate {
-	bc.mutation.SetOrganizationID(id)
-	return bc
-}
-
-// SetOrganization sets the "organization" edge to the Organization entity.
-func (bc *BookingCreate) SetOrganization(o *Organization) *BookingCreate {
-	return bc.SetOrganizationID(o.ID)
-}
-
 // Mutation returns the BookingMutation object of the builder.
 func (bc *BookingCreate) Mutation() *BookingMutation {
 	return bc.mutation
@@ -129,7 +111,9 @@ func (bc *BookingCreate) Save(ctx context.Context) (*Booking, error) {
 		err  error
 		node *Booking
 	)
-	bc.defaults()
+	if err := bc.defaults(); err != nil {
+		return nil, err
+	}
 	if len(bc.hooks) == 0 {
 		if err = bc.check(); err != nil {
 			return nil, err
@@ -188,15 +172,22 @@ func (bc *BookingCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (bc *BookingCreate) defaults() {
+func (bc *BookingCreate) defaults() error {
 	if _, ok := bc.mutation.CreatedAt(); !ok {
+		if booking.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized booking.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := booking.DefaultCreatedAt()
 		bc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := bc.mutation.UpdatedAt(); !ok {
+		if booking.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized booking.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := booking.DefaultUpdatedAt()
 		bc.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -219,14 +210,8 @@ func (bc *BookingCreate) check() error {
 	if _, ok := bc.mutation.ResourceId(); !ok {
 		return &ValidationError{Name: "resourceId", err: errors.New(`ent: missing required field "resourceId"`)}
 	}
-	if _, ok := bc.mutation.OrganizationId(); !ok {
-		return &ValidationError{Name: "organizationId", err: errors.New(`ent: missing required field "organizationId"`)}
-	}
 	if _, ok := bc.mutation.ResourceID(); !ok {
 		return &ValidationError{Name: "resource", err: errors.New("ent: missing required edge \"resource\"")}
-	}
-	if _, ok := bc.mutation.OrganizationID(); !ok {
-		return &ValidationError{Name: "organization", err: errors.New("ent: missing required edge \"organization\"")}
 	}
 	return nil
 }
@@ -332,26 +317,6 @@ func (bc *BookingCreate) createSpec() (*Booking, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.ResourceId = nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := bc.mutation.OrganizationIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   booking.OrganizationTable,
-			Columns: []string{booking.OrganizationColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: organization.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.OrganizationId = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

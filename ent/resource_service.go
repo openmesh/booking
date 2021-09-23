@@ -49,7 +49,10 @@ func (s *resourceService) FindResourceByID(
 // FindResources retrieves a lit of resources based on a filter. Only returns
 // resources that accessible to the user. Also returns a count of total matching resources
 // which may be different from the number of returned bookings if the "Limit" field is set.
-func (s *resourceService) FindResources(ctx context.Context, req booking.FindResourcesRequest) booking.FindResourcesResponse {
+func (s *resourceService) FindResources(
+	ctx context.Context,
+	req booking.FindResourcesRequest,
+) booking.FindResourcesResponse {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
 		return booking.FindResourcesResponse{Err: fmt.Errorf("failed to start transaction: %w", err)}
@@ -95,7 +98,7 @@ func (s *resourceService) CreateResource(
 
 	return booking.CreateResourceResponse{
 		Resource: r.toModel(),
-		Err:      tx.Commit(),
+		Err:      nil,
 	}
 }
 

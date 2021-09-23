@@ -7,26 +7,27 @@ import (
 	"github.com/openmesh/booking/ent"
 	"github.com/openmesh/booking/ent/privacy"
 	"github.com/openmesh/booking/ent/resource"
+	"github.com/openmesh/booking/ent/slot"
 )
 
-func FilterResourceOrganizationQueryRule() privacy.QueryRule {
-	return privacy.ResourceQueryRuleFunc(func(ctx context.Context, rq *ent.ResourceQuery) error {
+func FilterSlotOrganizationQueryRule() privacy.QueryRule {
+	return privacy.SlotQueryRuleFunc(func(ctx context.Context, sq *ent.SlotQuery) error {
 		orgID := booking.OrganizationIDFromContext(ctx)
 		if orgID == 0 {
 			return privacy.Denyf("missing organization from context")
 		}
-		rq.Where(resource.OrganizationId(orgID))
+		sq.Where(slot.HasResourceWith(resource.OrganizationId(orgID)))
 		return privacy.Skip
 	})
 }
 
-func FilterResourceOrganizationMutationRule() privacy.MutationRule {
-	return privacy.ResourceMutationRuleFunc(func(ctx context.Context, rm *ent.ResourceMutation) error {
+func FilterSlotOrganizationMutationRule() privacy.MutationRule {
+	return privacy.SlotMutationRuleFunc(func(ctx context.Context, sm *ent.SlotMutation) error {
 		orgID := booking.OrganizationIDFromContext(ctx)
 		if orgID == 0 {
 			return privacy.Denyf("missing organization from context")
 		}
-		rm.Where(resource.OrganizationId(orgID))
+		sm.Where(slot.HasResourceWith(resource.OrganizationId(orgID)))
 		return privacy.Skip
 	})
 }

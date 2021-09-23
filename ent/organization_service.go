@@ -2,8 +2,9 @@ package ent
 
 import (
 	"context"
-	"github.com/openmesh/booking/ent/organization"
 	"math/rand"
+
+	"github.com/openmesh/booking/ent/organization"
 
 	"github.com/openmesh/booking"
 )
@@ -32,6 +33,9 @@ func (s *organizationService) FindOrganizationByPrivateKey(ctx context.Context, 
 		Query().
 		Where(organization.PrivateKey(key)).
 		First(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return org.toModel(), err
 }
 

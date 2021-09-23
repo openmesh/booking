@@ -189,6 +189,9 @@ func (r CreateResourceRequest) Validate() []ValidationError {
 	if r.BookingPrice < 0 {
 		errs = append(errs, ValidationError{Name: "bookingPrice", Reason: "Cannot be less than 0"})
 	}
+	if r.BookingPrice > r.Price {
+		errs = append(errs, ValidationError{Name: "bookingPrice", Reason: "Cannot be greater than price"})
+	}
 	if !validTimezone(r.Timezone) {
 		errs = append(errs, ValidationError{Name: "timezone", Reason: "Must be valid timezone in the format UTC±HH:MM"})
 	}

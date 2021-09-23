@@ -4,6 +4,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/privacy"
+	"github.com/openmesh/booking/ent/rule"
 )
 
 // BookingMetadatum holds the schema definition for the BookingMetadatum entity.
@@ -28,5 +30,16 @@ func (BookingMetadatum) Edges() []ent.Edge {
 			Field("bookingId").
 			Unique().
 			Required(),
+	}
+}
+
+func (BookingMetadatum) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			rule.FilterBookingMetadatumOrganizationQueryRule(),
+		},
+		Mutation: privacy.MutationPolicy{
+			rule.FilterBookingMetadatumOrganizationMutationRule(),
+		},
 	}
 }

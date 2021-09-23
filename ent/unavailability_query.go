@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/unavailability"
@@ -27,8 +26,7 @@ type UnavailabilityQuery struct {
 	fields     []string
 	predicates []predicate.Unavailability
 	// eager-loading edges.
-	withResource     *ResourceQuery
-	withOrganization *OrganizationQuery
+	withResource *ResourceQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -80,28 +78,6 @@ func (uq *UnavailabilityQuery) QueryResource() *ResourceQuery {
 			sqlgraph.From(unavailability.Table, unavailability.FieldID, selector),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, unavailability.ResourceTable, unavailability.ResourceColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryOrganization chains the current query on the "organization" edge.
-func (uq *UnavailabilityQuery) QueryOrganization() *OrganizationQuery {
-	query := &OrganizationQuery{config: uq.config}
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := uq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := uq.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(unavailability.Table, unavailability.FieldID, selector),
-			sqlgraph.To(organization.Table, organization.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, unavailability.OrganizationTable, unavailability.OrganizationColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
 		return fromU, nil
@@ -285,13 +261,12 @@ func (uq *UnavailabilityQuery) Clone() *UnavailabilityQuery {
 		return nil
 	}
 	return &UnavailabilityQuery{
-		config:           uq.config,
-		limit:            uq.limit,
-		offset:           uq.offset,
-		order:            append([]OrderFunc{}, uq.order...),
-		predicates:       append([]predicate.Unavailability{}, uq.predicates...),
-		withResource:     uq.withResource.Clone(),
-		withOrganization: uq.withOrganization.Clone(),
+		config:       uq.config,
+		limit:        uq.limit,
+		offset:       uq.offset,
+		order:        append([]OrderFunc{}, uq.order...),
+		predicates:   append([]predicate.Unavailability{}, uq.predicates...),
+		withResource: uq.withResource.Clone(),
 		// clone intermediate query.
 		sql:  uq.sql.Clone(),
 		path: uq.path,
@@ -306,17 +281,6 @@ func (uq *UnavailabilityQuery) WithResource(opts ...func(*ResourceQuery)) *Unava
 		opt(query)
 	}
 	uq.withResource = query
-	return uq
-}
-
-// WithOrganization tells the query-builder to eager-load the nodes that are connected to
-// the "organization" edge. The optional arguments are used to configure the query builder of the edge.
-func (uq *UnavailabilityQuery) WithOrganization(opts ...func(*OrganizationQuery)) *UnavailabilityQuery {
-	query := &OrganizationQuery{config: uq.config}
-	for _, opt := range opts {
-		opt(query)
-	}
-	uq.withOrganization = query
 	return uq
 }
 
@@ -378,6 +342,12 @@ func (uq *UnavailabilityQuery) prepareQuery(ctx context.Context) error {
 		}
 		uq.sql = prev
 	}
+	if unavailability.Policy == nil {
+		return errors.New("ent: uninitialized unavailability.Policy (forgotten import ent/runtime?)")
+	}
+	if err := unavailability.Policy.EvalQuery(ctx, uq); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -385,9 +355,8 @@ func (uq *UnavailabilityQuery) sqlAll(ctx context.Context) ([]*Unavailability, e
 	var (
 		nodes       = []*Unavailability{}
 		_spec       = uq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [1]bool{
 			uq.withResource != nil,
-			uq.withOrganization != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -432,32 +401,6 @@ func (uq *UnavailabilityQuery) sqlAll(ctx context.Context) ([]*Unavailability, e
 			}
 			for i := range nodes {
 				nodes[i].Edges.Resource = n
-			}
-		}
-	}
-
-	if query := uq.withOrganization; query != nil {
-		ids := make([]int, 0, len(nodes))
-		nodeids := make(map[int][]*Unavailability)
-		for i := range nodes {
-			fk := nodes[i].OrganizationId
-			if _, ok := nodeids[fk]; !ok {
-				ids = append(ids, fk)
-			}
-			nodeids[fk] = append(nodeids[fk], nodes[i])
-		}
-		query.Where(organization.IDIn(ids...))
-		neighbors, err := query.All(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, n := range neighbors {
-			nodes, ok := nodeids[n.ID]
-			if !ok {
-				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v`, n.ID)
-			}
-			for i := range nodes {
-				nodes[i].Edges.Organization = n
 			}
 		}
 	}

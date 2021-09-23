@@ -4,6 +4,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/privacy"
+	"github.com/openmesh/booking/ent/rule"
 )
 
 // Booking holds the schema definition for the Booking entity.
@@ -18,7 +20,6 @@ func (Booking) Fields() []ent.Field {
 		field.Time("startTime"),
 		field.Time("endTime"),
 		field.Int("resourceId"),
-		field.Int("organizationId"),
 	}
 }
 
@@ -31,11 +32,6 @@ func (Booking) Edges() []ent.Edge {
 			Field("resourceId").
 			Unique().
 			Required(),
-		edge.From("organization", Organization.Type).
-			Ref("bookings").
-			Field("organizationId").
-			Unique().
-			Required(),
 	}
 }
 
@@ -43,5 +39,16 @@ func (Booking) Edges() []ent.Edge {
 func (Booking) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		Timestamp{},
+	}
+}
+
+func (Booking) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			rule.FilterBookingOrganizationQueryRule(),
+		},
+		Mutation: privacy.MutationPolicy{
+			rule.FilterBookingOrganizationMutationRule(),
+		},
 	}
 }

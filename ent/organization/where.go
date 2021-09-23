@@ -669,62 +669,6 @@ func HasResourcesWith(preds ...predicate.Resource) predicate.Organization {
 	})
 }
 
-// HasBookings applies the HasEdge predicate on the "bookings" edge.
-func HasBookings() predicate.Organization {
-	return predicate.Organization(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(BookingsTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, BookingsTable, BookingsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasBookingsWith applies the HasEdge predicate on the "bookings" edge with a given conditions (other predicates).
-func HasBookingsWith(preds ...predicate.Booking) predicate.Organization {
-	return predicate.Organization(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(BookingsInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, BookingsTable, BookingsColumn),
-		)
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasUnavailabilities applies the HasEdge predicate on the "unavailabilities" edge.
-func HasUnavailabilities() predicate.Organization {
-	return predicate.Organization(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(UnavailabilitiesTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, UnavailabilitiesTable, UnavailabilitiesColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasUnavailabilitiesWith applies the HasEdge predicate on the "unavailabilities" edge with a given conditions (other predicates).
-func HasUnavailabilitiesWith(preds ...predicate.Unavailability) predicate.Organization {
-	return predicate.Organization(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(UnavailabilitiesInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, UnavailabilitiesTable, UnavailabilitiesColumn),
-		)
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Organization) predicate.Organization {
 	return predicate.Organization(func(s *sql.Selector) {

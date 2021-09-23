@@ -342,6 +342,12 @@ func (bmq *BookingMetadatumQuery) prepareQuery(ctx context.Context) error {
 		}
 		bmq.sql = prev
 	}
+	if bookingmetadatum.Policy == nil {
+		return errors.New("ent: uninitialized bookingmetadatum.Policy (forgotten import ent/runtime?)")
+	}
+	if err := bookingmetadatum.Policy.EvalQuery(ctx, bmq); err != nil {
+		return err
+	}
 	return nil
 }
 

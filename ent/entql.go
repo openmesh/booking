@@ -55,13 +55,12 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "Booking",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			booking.FieldCreatedAt:      {Type: field.TypeTime, Column: booking.FieldCreatedAt},
-			booking.FieldUpdatedAt:      {Type: field.TypeTime, Column: booking.FieldUpdatedAt},
-			booking.FieldStatus:         {Type: field.TypeString, Column: booking.FieldStatus},
-			booking.FieldStartTime:      {Type: field.TypeTime, Column: booking.FieldStartTime},
-			booking.FieldEndTime:        {Type: field.TypeTime, Column: booking.FieldEndTime},
-			booking.FieldResourceId:     {Type: field.TypeInt, Column: booking.FieldResourceId},
-			booking.FieldOrganizationId: {Type: field.TypeInt, Column: booking.FieldOrganizationId},
+			booking.FieldCreatedAt:  {Type: field.TypeTime, Column: booking.FieldCreatedAt},
+			booking.FieldUpdatedAt:  {Type: field.TypeTime, Column: booking.FieldUpdatedAt},
+			booking.FieldStatus:     {Type: field.TypeString, Column: booking.FieldStatus},
+			booking.FieldStartTime:  {Type: field.TypeTime, Column: booking.FieldStartTime},
+			booking.FieldEndTime:    {Type: field.TypeTime, Column: booking.FieldEndTime},
+			booking.FieldResourceId: {Type: field.TypeInt, Column: booking.FieldResourceId},
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
@@ -165,12 +164,11 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "Unavailability",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			unavailability.FieldCreatedAt:      {Type: field.TypeTime, Column: unavailability.FieldCreatedAt},
-			unavailability.FieldUpdatedAt:      {Type: field.TypeTime, Column: unavailability.FieldUpdatedAt},
-			unavailability.FieldStartTime:      {Type: field.TypeTime, Column: unavailability.FieldStartTime},
-			unavailability.FieldEndTime:        {Type: field.TypeTime, Column: unavailability.FieldEndTime},
-			unavailability.FieldResourceId:     {Type: field.TypeInt, Column: unavailability.FieldResourceId},
-			unavailability.FieldOrganizationId: {Type: field.TypeInt, Column: unavailability.FieldOrganizationId},
+			unavailability.FieldCreatedAt:  {Type: field.TypeTime, Column: unavailability.FieldCreatedAt},
+			unavailability.FieldUpdatedAt:  {Type: field.TypeTime, Column: unavailability.FieldUpdatedAt},
+			unavailability.FieldStartTime:  {Type: field.TypeTime, Column: unavailability.FieldStartTime},
+			unavailability.FieldEndTime:    {Type: field.TypeTime, Column: unavailability.FieldEndTime},
+			unavailability.FieldResourceId: {Type: field.TypeInt, Column: unavailability.FieldResourceId},
 		},
 	}
 	graph.Nodes[8] = &sqlgraph.Node{
@@ -228,18 +226,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Resource",
 	)
 	graph.MustAddE(
-		"organization",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   booking.OrganizationTable,
-			Columns: []string{booking.OrganizationColumn},
-			Bidi:    false,
-		},
-		"Booking",
-		"Organization",
-	)
-	graph.MustAddE(
 		"booking",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -274,30 +260,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"Organization",
 		"Resource",
-	)
-	graph.MustAddE(
-		"bookings",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.BookingsTable,
-			Columns: []string{organization.BookingsColumn},
-			Bidi:    false,
-		},
-		"Organization",
-		"Booking",
-	)
-	graph.MustAddE(
-		"unavailabilities",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   organization.UnavailabilitiesTable,
-			Columns: []string{organization.UnavailabilitiesColumn},
-			Bidi:    false,
-		},
-		"Organization",
-		"Unavailability",
 	)
 	graph.MustAddE(
 		"user",
@@ -394,18 +356,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"Unavailability",
 		"Resource",
-	)
-	graph.MustAddE(
-		"organization",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   unavailability.OrganizationTable,
-			Columns: []string{unavailability.OrganizationColumn},
-			Bidi:    false,
-		},
-		"Unavailability",
-		"Organization",
 	)
 	graph.MustAddE(
 		"auths",
@@ -602,11 +552,6 @@ func (f *BookingFilter) WhereResourceId(p entql.IntP) {
 	f.Where(p.Field(booking.FieldResourceId))
 }
 
-// WhereOrganizationId applies the entql int predicate on the organizationId field.
-func (f *BookingFilter) WhereOrganizationId(p entql.IntP) {
-	f.Where(p.Field(booking.FieldOrganizationId))
-}
-
 // WhereHasMetadata applies a predicate to check if query has an edge metadata.
 func (f *BookingFilter) WhereHasMetadata() {
 	f.Where(entql.HasEdge("metadata"))
@@ -629,20 +574,6 @@ func (f *BookingFilter) WhereHasResource() {
 // WhereHasResourceWith applies a predicate to check if query has an edge resource with a given conditions (other predicates).
 func (f *BookingFilter) WhereHasResourceWith(preds ...predicate.Resource) {
 	f.Where(entql.HasEdgeWith("resource", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// WhereHasOrganization applies a predicate to check if query has an edge organization.
-func (f *BookingFilter) WhereHasOrganization() {
-	f.Where(entql.HasEdge("organization"))
-}
-
-// WhereHasOrganizationWith applies a predicate to check if query has an edge organization with a given conditions (other predicates).
-func (f *BookingFilter) WhereHasOrganizationWith(preds ...predicate.Organization) {
-	f.Where(entql.HasEdgeWith("organization", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -803,34 +734,6 @@ func (f *OrganizationFilter) WhereHasResources() {
 // WhereHasResourcesWith applies a predicate to check if query has an edge resources with a given conditions (other predicates).
 func (f *OrganizationFilter) WhereHasResourcesWith(preds ...predicate.Resource) {
 	f.Where(entql.HasEdgeWith("resources", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// WhereHasBookings applies a predicate to check if query has an edge bookings.
-func (f *OrganizationFilter) WhereHasBookings() {
-	f.Where(entql.HasEdge("bookings"))
-}
-
-// WhereHasBookingsWith applies a predicate to check if query has an edge bookings with a given conditions (other predicates).
-func (f *OrganizationFilter) WhereHasBookingsWith(preds ...predicate.Booking) {
-	f.Where(entql.HasEdgeWith("bookings", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// WhereHasUnavailabilities applies a predicate to check if query has an edge unavailabilities.
-func (f *OrganizationFilter) WhereHasUnavailabilities() {
-	f.Where(entql.HasEdge("unavailabilities"))
-}
-
-// WhereHasUnavailabilitiesWith applies a predicate to check if query has an edge unavailabilities with a given conditions (other predicates).
-func (f *OrganizationFilter) WhereHasUnavailabilitiesWith(preds ...predicate.Unavailability) {
-	f.Where(entql.HasEdgeWith("unavailabilities", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -1201,11 +1104,6 @@ func (f *UnavailabilityFilter) WhereResourceId(p entql.IntP) {
 	f.Where(p.Field(unavailability.FieldResourceId))
 }
 
-// WhereOrganizationId applies the entql int predicate on the organizationId field.
-func (f *UnavailabilityFilter) WhereOrganizationId(p entql.IntP) {
-	f.Where(p.Field(unavailability.FieldOrganizationId))
-}
-
 // WhereHasResource applies a predicate to check if query has an edge resource.
 func (f *UnavailabilityFilter) WhereHasResource() {
 	f.Where(entql.HasEdge("resource"))
@@ -1214,20 +1112,6 @@ func (f *UnavailabilityFilter) WhereHasResource() {
 // WhereHasResourceWith applies a predicate to check if query has an edge resource with a given conditions (other predicates).
 func (f *UnavailabilityFilter) WhereHasResourceWith(preds ...predicate.Resource) {
 	f.Where(entql.HasEdgeWith("resource", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// WhereHasOrganization applies a predicate to check if query has an edge organization.
-func (f *UnavailabilityFilter) WhereHasOrganization() {
-	f.Where(entql.HasEdge("organization"))
-}
-
-// WhereHasOrganizationWith applies a predicate to check if query has an edge organization with a given conditions (other predicates).
-func (f *UnavailabilityFilter) WhereHasOrganizationWith(preds ...predicate.Organization) {
-	f.Where(entql.HasEdgeWith("organization", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

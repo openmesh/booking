@@ -135,13 +135,6 @@ func ResourceId(v int) predicate.Booking {
 	})
 }
 
-// OrganizationId applies equality check predicate on the "organizationId" field. It's identical to OrganizationIdEQ.
-func OrganizationId(v int) predicate.Booking {
-	return predicate.Booking(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldOrganizationId), v))
-	})
-}
-
 // CreatedAtEQ applies the EQ predicate on the "createdAt" field.
 func CreatedAtEQ(v time.Time) predicate.Booking {
 	return predicate.Booking(func(s *sql.Selector) {
@@ -605,54 +598,6 @@ func ResourceIdNotIn(vs ...int) predicate.Booking {
 	})
 }
 
-// OrganizationIdEQ applies the EQ predicate on the "organizationId" field.
-func OrganizationIdEQ(v int) predicate.Booking {
-	return predicate.Booking(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldOrganizationId), v))
-	})
-}
-
-// OrganizationIdNEQ applies the NEQ predicate on the "organizationId" field.
-func OrganizationIdNEQ(v int) predicate.Booking {
-	return predicate.Booking(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldOrganizationId), v))
-	})
-}
-
-// OrganizationIdIn applies the In predicate on the "organizationId" field.
-func OrganizationIdIn(vs ...int) predicate.Booking {
-	v := make([]interface{}, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Booking(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
-		s.Where(sql.In(s.C(FieldOrganizationId), v...))
-	})
-}
-
-// OrganizationIdNotIn applies the NotIn predicate on the "organizationId" field.
-func OrganizationIdNotIn(vs ...int) predicate.Booking {
-	v := make([]interface{}, len(vs))
-	for i := range v {
-		v[i] = vs[i]
-	}
-	return predicate.Booking(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
-		s.Where(sql.NotIn(s.C(FieldOrganizationId), v...))
-	})
-}
-
 // HasMetadata applies the HasEdge predicate on the "metadata" edge.
 func HasMetadata() predicate.Booking {
 	return predicate.Booking(func(s *sql.Selector) {
@@ -700,34 +645,6 @@ func HasResourceWith(preds ...predicate.Resource) predicate.Booking {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(ResourceInverseTable, FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, ResourceTable, ResourceColumn),
-		)
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasOrganization applies the HasEdge predicate on the "organization" edge.
-func HasOrganization() predicate.Booking {
-	return predicate.Booking(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(OrganizationTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, OrganizationTable, OrganizationColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasOrganizationWith applies the HasEdge predicate on the "organization" edge with a given conditions (other predicates).
-func HasOrganizationWith(preds ...predicate.Organization) predicate.Booking {
-	return predicate.Booking(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(OrganizationInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, OrganizationTable, OrganizationColumn),
 		)
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {

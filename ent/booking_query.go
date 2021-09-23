@@ -14,7 +14,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/booking"
 	"github.com/openmesh/booking/ent/bookingmetadatum"
-	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 )
@@ -29,9 +28,8 @@ type BookingQuery struct {
 	fields     []string
 	predicates []predicate.Booking
 	// eager-loading edges.
-	withMetadata     *BookingMetadatumQuery
-	withResource     *ResourceQuery
-	withOrganization *OrganizationQuery
+	withMetadata *BookingMetadatumQuery
+	withResource *ResourceQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -105,28 +103,6 @@ func (bq *BookingQuery) QueryResource() *ResourceQuery {
 			sqlgraph.From(booking.Table, booking.FieldID, selector),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, booking.ResourceTable, booking.ResourceColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(bq.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryOrganization chains the current query on the "organization" edge.
-func (bq *BookingQuery) QueryOrganization() *OrganizationQuery {
-	query := &OrganizationQuery{config: bq.config}
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := bq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := bq.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(booking.Table, booking.FieldID, selector),
-			sqlgraph.To(organization.Table, organization.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, booking.OrganizationTable, booking.OrganizationColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(bq.driver.Dialect(), step)
 		return fromU, nil
@@ -310,14 +286,13 @@ func (bq *BookingQuery) Clone() *BookingQuery {
 		return nil
 	}
 	return &BookingQuery{
-		config:           bq.config,
-		limit:            bq.limit,
-		offset:           bq.offset,
-		order:            append([]OrderFunc{}, bq.order...),
-		predicates:       append([]predicate.Booking{}, bq.predicates...),
-		withMetadata:     bq.withMetadata.Clone(),
-		withResource:     bq.withResource.Clone(),
-		withOrganization: bq.withOrganization.Clone(),
+		config:       bq.config,
+		limit:        bq.limit,
+		offset:       bq.offset,
+		order:        append([]OrderFunc{}, bq.order...),
+		predicates:   append([]predicate.Booking{}, bq.predicates...),
+		withMetadata: bq.withMetadata.Clone(),
+		withResource: bq.withResource.Clone(),
 		// clone intermediate query.
 		sql:  bq.sql.Clone(),
 		path: bq.path,
@@ -343,17 +318,6 @@ func (bq *BookingQuery) WithResource(opts ...func(*ResourceQuery)) *BookingQuery
 		opt(query)
 	}
 	bq.withResource = query
-	return bq
-}
-
-// WithOrganization tells the query-builder to eager-load the nodes that are connected to
-// the "organization" edge. The optional arguments are used to configure the query builder of the edge.
-func (bq *BookingQuery) WithOrganization(opts ...func(*OrganizationQuery)) *BookingQuery {
-	query := &OrganizationQuery{config: bq.config}
-	for _, opt := range opts {
-		opt(query)
-	}
-	bq.withOrganization = query
 	return bq
 }
 
@@ -415,6 +379,12 @@ func (bq *BookingQuery) prepareQuery(ctx context.Context) error {
 		}
 		bq.sql = prev
 	}
+	if booking.Policy == nil {
+		return errors.New("ent: uninitialized booking.Policy (forgotten import ent/runtime?)")
+	}
+	if err := booking.Policy.EvalQuery(ctx, bq); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -422,10 +392,9 @@ func (bq *BookingQuery) sqlAll(ctx context.Context) ([]*Booking, error) {
 	var (
 		nodes       = []*Booking{}
 		_spec       = bq.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [2]bool{
 			bq.withMetadata != nil,
 			bq.withResource != nil,
-			bq.withOrganization != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -495,32 +464,6 @@ func (bq *BookingQuery) sqlAll(ctx context.Context) ([]*Booking, error) {
 			}
 			for i := range nodes {
 				nodes[i].Edges.Resource = n
-			}
-		}
-	}
-
-	if query := bq.withOrganization; query != nil {
-		ids := make([]int, 0, len(nodes))
-		nodeids := make(map[int][]*Booking)
-		for i := range nodes {
-			fk := nodes[i].OrganizationId
-			if _, ok := nodeids[fk]; !ok {
-				ids = append(ids, fk)
-			}
-			nodeids[fk] = append(nodeids[fk], nodes[i])
-		}
-		query.Where(organization.IDIn(ids...))
-		neighbors, err := query.All(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, n := range neighbors {
-			nodes, ok := nodeids[n.ID]
-			if !ok {
-				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v`, n.ID)
-			}
-			for i := range nodes {
-				nodes[i].Edges.Organization = n
 			}
 		}
 	}

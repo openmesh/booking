@@ -846,25 +846,23 @@ func (m *AuthMutation) ResetEdge(name string) error {
 // BookingMutation represents an operation that mutates the Booking nodes in the graph.
 type BookingMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	createdAt           *time.Time
-	updatedAt           *time.Time
-	status              *string
-	startTime           *time.Time
-	endTime             *time.Time
-	clearedFields       map[string]struct{}
-	metadata            map[int]struct{}
-	removedmetadata     map[int]struct{}
-	clearedmetadata     bool
-	resource            *int
-	clearedresource     bool
-	organization        *int
-	clearedorganization bool
-	done                bool
-	oldValue            func(context.Context) (*Booking, error)
-	predicates          []predicate.Booking
+	op              Op
+	typ             string
+	id              *int
+	createdAt       *time.Time
+	updatedAt       *time.Time
+	status          *string
+	startTime       *time.Time
+	endTime         *time.Time
+	clearedFields   map[string]struct{}
+	metadata        map[int]struct{}
+	removedmetadata map[int]struct{}
+	clearedmetadata bool
+	resource        *int
+	clearedresource bool
+	done            bool
+	oldValue        func(context.Context) (*Booking, error)
+	predicates      []predicate.Booking
 }
 
 var _ ent.Mutation = (*BookingMutation)(nil)
@@ -1162,42 +1160,6 @@ func (m *BookingMutation) ResetResourceId() {
 	m.resource = nil
 }
 
-// SetOrganizationId sets the "organizationId" field.
-func (m *BookingMutation) SetOrganizationId(i int) {
-	m.organization = &i
-}
-
-// OrganizationId returns the value of the "organizationId" field in the mutation.
-func (m *BookingMutation) OrganizationId() (r int, exists bool) {
-	v := m.organization
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldOrganizationId returns the old "organizationId" field's value of the Booking entity.
-// If the Booking object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BookingMutation) OldOrganizationId(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldOrganizationId is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldOrganizationId requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldOrganizationId: %w", err)
-	}
-	return oldValue.OrganizationId, nil
-}
-
-// ResetOrganizationId resets all changes to the "organizationId" field.
-func (m *BookingMutation) ResetOrganizationId() {
-	m.organization = nil
-}
-
 // AddMetadatumIDs adds the "metadata" edge to the BookingMetadatum entity by ids.
 func (m *BookingMutation) AddMetadatumIDs(ids ...int) {
 	if m.metadata == nil {
@@ -1291,45 +1253,6 @@ func (m *BookingMutation) ResetResource() {
 	m.clearedresource = false
 }
 
-// SetOrganizationID sets the "organization" edge to the Organization entity by id.
-func (m *BookingMutation) SetOrganizationID(id int) {
-	m.organization = &id
-}
-
-// ClearOrganization clears the "organization" edge to the Organization entity.
-func (m *BookingMutation) ClearOrganization() {
-	m.clearedorganization = true
-}
-
-// OrganizationCleared reports if the "organization" edge to the Organization entity was cleared.
-func (m *BookingMutation) OrganizationCleared() bool {
-	return m.clearedorganization
-}
-
-// OrganizationID returns the "organization" edge ID in the mutation.
-func (m *BookingMutation) OrganizationID() (id int, exists bool) {
-	if m.organization != nil {
-		return *m.organization, true
-	}
-	return
-}
-
-// OrganizationIDs returns the "organization" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// OrganizationID instead. It exists only for internal usage by the builders.
-func (m *BookingMutation) OrganizationIDs() (ids []int) {
-	if id := m.organization; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetOrganization resets all changes to the "organization" edge.
-func (m *BookingMutation) ResetOrganization() {
-	m.organization = nil
-	m.clearedorganization = false
-}
-
 // Where appends a list predicates to the BookingMutation builder.
 func (m *BookingMutation) Where(ps ...predicate.Booking) {
 	m.predicates = append(m.predicates, ps...)
@@ -1349,7 +1272,7 @@ func (m *BookingMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BookingMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 6)
 	if m.createdAt != nil {
 		fields = append(fields, booking.FieldCreatedAt)
 	}
@@ -1367,9 +1290,6 @@ func (m *BookingMutation) Fields() []string {
 	}
 	if m.resource != nil {
 		fields = append(fields, booking.FieldResourceId)
-	}
-	if m.organization != nil {
-		fields = append(fields, booking.FieldOrganizationId)
 	}
 	return fields
 }
@@ -1391,8 +1311,6 @@ func (m *BookingMutation) Field(name string) (ent.Value, bool) {
 		return m.EndTime()
 	case booking.FieldResourceId:
 		return m.ResourceId()
-	case booking.FieldOrganizationId:
-		return m.OrganizationId()
 	}
 	return nil, false
 }
@@ -1414,8 +1332,6 @@ func (m *BookingMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldEndTime(ctx)
 	case booking.FieldResourceId:
 		return m.OldResourceId(ctx)
-	case booking.FieldOrganizationId:
-		return m.OldOrganizationId(ctx)
 	}
 	return nil, fmt.Errorf("unknown Booking field %s", name)
 }
@@ -1466,13 +1382,6 @@ func (m *BookingMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetResourceId(v)
-		return nil
-	case booking.FieldOrganizationId:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetOrganizationId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Booking field %s", name)
@@ -1544,24 +1453,18 @@ func (m *BookingMutation) ResetField(name string) error {
 	case booking.FieldResourceId:
 		m.ResetResourceId()
 		return nil
-	case booking.FieldOrganizationId:
-		m.ResetOrganizationId()
-		return nil
 	}
 	return fmt.Errorf("unknown Booking field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *BookingMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 2)
 	if m.metadata != nil {
 		edges = append(edges, booking.EdgeMetadata)
 	}
 	if m.resource != nil {
 		edges = append(edges, booking.EdgeResource)
-	}
-	if m.organization != nil {
-		edges = append(edges, booking.EdgeOrganization)
 	}
 	return edges
 }
@@ -1580,17 +1483,13 @@ func (m *BookingMutation) AddedIDs(name string) []ent.Value {
 		if id := m.resource; id != nil {
 			return []ent.Value{*id}
 		}
-	case booking.EdgeOrganization:
-		if id := m.organization; id != nil {
-			return []ent.Value{*id}
-		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *BookingMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 2)
 	if m.removedmetadata != nil {
 		edges = append(edges, booking.EdgeMetadata)
 	}
@@ -1613,15 +1512,12 @@ func (m *BookingMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *BookingMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 2)
 	if m.clearedmetadata {
 		edges = append(edges, booking.EdgeMetadata)
 	}
 	if m.clearedresource {
 		edges = append(edges, booking.EdgeResource)
-	}
-	if m.clearedorganization {
-		edges = append(edges, booking.EdgeOrganization)
 	}
 	return edges
 }
@@ -1634,8 +1530,6 @@ func (m *BookingMutation) EdgeCleared(name string) bool {
 		return m.clearedmetadata
 	case booking.EdgeResource:
 		return m.clearedresource
-	case booking.EdgeOrganization:
-		return m.clearedorganization
 	}
 	return false
 }
@@ -1646,9 +1540,6 @@ func (m *BookingMutation) ClearEdge(name string) error {
 	switch name {
 	case booking.EdgeResource:
 		m.ClearResource()
-		return nil
-	case booking.EdgeOrganization:
-		m.ClearOrganization()
 		return nil
 	}
 	return fmt.Errorf("unknown Booking unique edge %s", name)
@@ -1663,9 +1554,6 @@ func (m *BookingMutation) ResetEdge(name string) error {
 		return nil
 	case booking.EdgeResource:
 		m.ResetResource()
-		return nil
-	case booking.EdgeOrganization:
-		m.ResetOrganization()
 		return nil
 	}
 	return fmt.Errorf("unknown Booking edge %s", name)
@@ -2145,30 +2033,24 @@ func (m *BookingMetadatumMutation) ResetEdge(name string) error {
 // OrganizationMutation represents an operation that mutates the Organization nodes in the graph.
 type OrganizationMutation struct {
 	config
-	op                      Op
-	typ                     string
-	id                      *int
-	createdAt               *time.Time
-	updatedAt               *time.Time
-	name                    *string
-	publicKey               *string
-	privateKey              *string
-	clearedFields           map[string]struct{}
-	users                   map[int]struct{}
-	removedusers            map[int]struct{}
-	clearedusers            bool
-	resources               map[int]struct{}
-	removedresources        map[int]struct{}
-	clearedresources        bool
-	bookings                map[int]struct{}
-	removedbookings         map[int]struct{}
-	clearedbookings         bool
-	unavailabilities        map[int]struct{}
-	removedunavailabilities map[int]struct{}
-	clearedunavailabilities bool
-	done                    bool
-	oldValue                func(context.Context) (*Organization, error)
-	predicates              []predicate.Organization
+	op               Op
+	typ              string
+	id               *int
+	createdAt        *time.Time
+	updatedAt        *time.Time
+	name             *string
+	publicKey        *string
+	privateKey       *string
+	clearedFields    map[string]struct{}
+	users            map[int]struct{}
+	removedusers     map[int]struct{}
+	clearedusers     bool
+	resources        map[int]struct{}
+	removedresources map[int]struct{}
+	clearedresources bool
+	done             bool
+	oldValue         func(context.Context) (*Organization, error)
+	predicates       []predicate.Organization
 }
 
 var _ ent.Mutation = (*OrganizationMutation)(nil)
@@ -2538,114 +2420,6 @@ func (m *OrganizationMutation) ResetResources() {
 	m.removedresources = nil
 }
 
-// AddBookingIDs adds the "bookings" edge to the Booking entity by ids.
-func (m *OrganizationMutation) AddBookingIDs(ids ...int) {
-	if m.bookings == nil {
-		m.bookings = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.bookings[ids[i]] = struct{}{}
-	}
-}
-
-// ClearBookings clears the "bookings" edge to the Booking entity.
-func (m *OrganizationMutation) ClearBookings() {
-	m.clearedbookings = true
-}
-
-// BookingsCleared reports if the "bookings" edge to the Booking entity was cleared.
-func (m *OrganizationMutation) BookingsCleared() bool {
-	return m.clearedbookings
-}
-
-// RemoveBookingIDs removes the "bookings" edge to the Booking entity by IDs.
-func (m *OrganizationMutation) RemoveBookingIDs(ids ...int) {
-	if m.removedbookings == nil {
-		m.removedbookings = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.bookings, ids[i])
-		m.removedbookings[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedBookings returns the removed IDs of the "bookings" edge to the Booking entity.
-func (m *OrganizationMutation) RemovedBookingsIDs() (ids []int) {
-	for id := range m.removedbookings {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// BookingsIDs returns the "bookings" edge IDs in the mutation.
-func (m *OrganizationMutation) BookingsIDs() (ids []int) {
-	for id := range m.bookings {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetBookings resets all changes to the "bookings" edge.
-func (m *OrganizationMutation) ResetBookings() {
-	m.bookings = nil
-	m.clearedbookings = false
-	m.removedbookings = nil
-}
-
-// AddUnavailabilityIDs adds the "unavailabilities" edge to the Unavailability entity by ids.
-func (m *OrganizationMutation) AddUnavailabilityIDs(ids ...int) {
-	if m.unavailabilities == nil {
-		m.unavailabilities = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.unavailabilities[ids[i]] = struct{}{}
-	}
-}
-
-// ClearUnavailabilities clears the "unavailabilities" edge to the Unavailability entity.
-func (m *OrganizationMutation) ClearUnavailabilities() {
-	m.clearedunavailabilities = true
-}
-
-// UnavailabilitiesCleared reports if the "unavailabilities" edge to the Unavailability entity was cleared.
-func (m *OrganizationMutation) UnavailabilitiesCleared() bool {
-	return m.clearedunavailabilities
-}
-
-// RemoveUnavailabilityIDs removes the "unavailabilities" edge to the Unavailability entity by IDs.
-func (m *OrganizationMutation) RemoveUnavailabilityIDs(ids ...int) {
-	if m.removedunavailabilities == nil {
-		m.removedunavailabilities = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.unavailabilities, ids[i])
-		m.removedunavailabilities[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedUnavailabilities returns the removed IDs of the "unavailabilities" edge to the Unavailability entity.
-func (m *OrganizationMutation) RemovedUnavailabilitiesIDs() (ids []int) {
-	for id := range m.removedunavailabilities {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// UnavailabilitiesIDs returns the "unavailabilities" edge IDs in the mutation.
-func (m *OrganizationMutation) UnavailabilitiesIDs() (ids []int) {
-	for id := range m.unavailabilities {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetUnavailabilities resets all changes to the "unavailabilities" edge.
-func (m *OrganizationMutation) ResetUnavailabilities() {
-	m.unavailabilities = nil
-	m.clearedunavailabilities = false
-	m.removedunavailabilities = nil
-}
-
 // Where appends a list predicates to the OrganizationMutation builder.
 func (m *OrganizationMutation) Where(ps ...predicate.Organization) {
 	m.predicates = append(m.predicates, ps...)
@@ -2832,18 +2606,12 @@ func (m *OrganizationMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *OrganizationMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 2)
 	if m.users != nil {
 		edges = append(edges, organization.EdgeUsers)
 	}
 	if m.resources != nil {
 		edges = append(edges, organization.EdgeResources)
-	}
-	if m.bookings != nil {
-		edges = append(edges, organization.EdgeBookings)
-	}
-	if m.unavailabilities != nil {
-		edges = append(edges, organization.EdgeUnavailabilities)
 	}
 	return edges
 }
@@ -2864,36 +2632,18 @@ func (m *OrganizationMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case organization.EdgeBookings:
-		ids := make([]ent.Value, 0, len(m.bookings))
-		for id := range m.bookings {
-			ids = append(ids, id)
-		}
-		return ids
-	case organization.EdgeUnavailabilities:
-		ids := make([]ent.Value, 0, len(m.unavailabilities))
-		for id := range m.unavailabilities {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *OrganizationMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 2)
 	if m.removedusers != nil {
 		edges = append(edges, organization.EdgeUsers)
 	}
 	if m.removedresources != nil {
 		edges = append(edges, organization.EdgeResources)
-	}
-	if m.removedbookings != nil {
-		edges = append(edges, organization.EdgeBookings)
-	}
-	if m.removedunavailabilities != nil {
-		edges = append(edges, organization.EdgeUnavailabilities)
 	}
 	return edges
 }
@@ -2914,36 +2664,18 @@ func (m *OrganizationMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case organization.EdgeBookings:
-		ids := make([]ent.Value, 0, len(m.removedbookings))
-		for id := range m.removedbookings {
-			ids = append(ids, id)
-		}
-		return ids
-	case organization.EdgeUnavailabilities:
-		ids := make([]ent.Value, 0, len(m.removedunavailabilities))
-		for id := range m.removedunavailabilities {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *OrganizationMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 2)
 	if m.clearedusers {
 		edges = append(edges, organization.EdgeUsers)
 	}
 	if m.clearedresources {
 		edges = append(edges, organization.EdgeResources)
-	}
-	if m.clearedbookings {
-		edges = append(edges, organization.EdgeBookings)
-	}
-	if m.clearedunavailabilities {
-		edges = append(edges, organization.EdgeUnavailabilities)
 	}
 	return edges
 }
@@ -2956,10 +2688,6 @@ func (m *OrganizationMutation) EdgeCleared(name string) bool {
 		return m.clearedusers
 	case organization.EdgeResources:
 		return m.clearedresources
-	case organization.EdgeBookings:
-		return m.clearedbookings
-	case organization.EdgeUnavailabilities:
-		return m.clearedunavailabilities
 	}
 	return false
 }
@@ -2981,12 +2709,6 @@ func (m *OrganizationMutation) ResetEdge(name string) error {
 		return nil
 	case organization.EdgeResources:
 		m.ResetResources()
-		return nil
-	case organization.EdgeBookings:
-		m.ResetBookings()
-		return nil
-	case organization.EdgeUnavailabilities:
-		m.ResetUnavailabilities()
 		return nil
 	}
 	return fmt.Errorf("unknown Organization edge %s", name)
@@ -5325,21 +5047,19 @@ func (m *SlotMutation) ResetEdge(name string) error {
 // UnavailabilityMutation represents an operation that mutates the Unavailability nodes in the graph.
 type UnavailabilityMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	createdAt           *time.Time
-	updatedAt           *time.Time
-	startTime           *time.Time
-	endTime             *time.Time
-	clearedFields       map[string]struct{}
-	resource            *int
-	clearedresource     bool
-	organization        *int
-	clearedorganization bool
-	done                bool
-	oldValue            func(context.Context) (*Unavailability, error)
-	predicates          []predicate.Unavailability
+	op              Op
+	typ             string
+	id              *int
+	createdAt       *time.Time
+	updatedAt       *time.Time
+	startTime       *time.Time
+	endTime         *time.Time
+	clearedFields   map[string]struct{}
+	resource        *int
+	clearedresource bool
+	done            bool
+	oldValue        func(context.Context) (*Unavailability, error)
+	predicates      []predicate.Unavailability
 }
 
 var _ ent.Mutation = (*UnavailabilityMutation)(nil)
@@ -5601,42 +5321,6 @@ func (m *UnavailabilityMutation) ResetResourceId() {
 	m.resource = nil
 }
 
-// SetOrganizationId sets the "organizationId" field.
-func (m *UnavailabilityMutation) SetOrganizationId(i int) {
-	m.organization = &i
-}
-
-// OrganizationId returns the value of the "organizationId" field in the mutation.
-func (m *UnavailabilityMutation) OrganizationId() (r int, exists bool) {
-	v := m.organization
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldOrganizationId returns the old "organizationId" field's value of the Unavailability entity.
-// If the Unavailability object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UnavailabilityMutation) OldOrganizationId(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldOrganizationId is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldOrganizationId requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldOrganizationId: %w", err)
-	}
-	return oldValue.OrganizationId, nil
-}
-
-// ResetOrganizationId resets all changes to the "organizationId" field.
-func (m *UnavailabilityMutation) ResetOrganizationId() {
-	m.organization = nil
-}
-
 // SetResourceID sets the "resource" edge to the Resource entity by id.
 func (m *UnavailabilityMutation) SetResourceID(id int) {
 	m.resource = &id
@@ -5676,45 +5360,6 @@ func (m *UnavailabilityMutation) ResetResource() {
 	m.clearedresource = false
 }
 
-// SetOrganizationID sets the "organization" edge to the Organization entity by id.
-func (m *UnavailabilityMutation) SetOrganizationID(id int) {
-	m.organization = &id
-}
-
-// ClearOrganization clears the "organization" edge to the Organization entity.
-func (m *UnavailabilityMutation) ClearOrganization() {
-	m.clearedorganization = true
-}
-
-// OrganizationCleared reports if the "organization" edge to the Organization entity was cleared.
-func (m *UnavailabilityMutation) OrganizationCleared() bool {
-	return m.clearedorganization
-}
-
-// OrganizationID returns the "organization" edge ID in the mutation.
-func (m *UnavailabilityMutation) OrganizationID() (id int, exists bool) {
-	if m.organization != nil {
-		return *m.organization, true
-	}
-	return
-}
-
-// OrganizationIDs returns the "organization" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// OrganizationID instead. It exists only for internal usage by the builders.
-func (m *UnavailabilityMutation) OrganizationIDs() (ids []int) {
-	if id := m.organization; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetOrganization resets all changes to the "organization" edge.
-func (m *UnavailabilityMutation) ResetOrganization() {
-	m.organization = nil
-	m.clearedorganization = false
-}
-
 // Where appends a list predicates to the UnavailabilityMutation builder.
 func (m *UnavailabilityMutation) Where(ps ...predicate.Unavailability) {
 	m.predicates = append(m.predicates, ps...)
@@ -5734,7 +5379,7 @@ func (m *UnavailabilityMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UnavailabilityMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 5)
 	if m.createdAt != nil {
 		fields = append(fields, unavailability.FieldCreatedAt)
 	}
@@ -5749,9 +5394,6 @@ func (m *UnavailabilityMutation) Fields() []string {
 	}
 	if m.resource != nil {
 		fields = append(fields, unavailability.FieldResourceId)
-	}
-	if m.organization != nil {
-		fields = append(fields, unavailability.FieldOrganizationId)
 	}
 	return fields
 }
@@ -5771,8 +5413,6 @@ func (m *UnavailabilityMutation) Field(name string) (ent.Value, bool) {
 		return m.EndTime()
 	case unavailability.FieldResourceId:
 		return m.ResourceId()
-	case unavailability.FieldOrganizationId:
-		return m.OrganizationId()
 	}
 	return nil, false
 }
@@ -5792,8 +5432,6 @@ func (m *UnavailabilityMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldEndTime(ctx)
 	case unavailability.FieldResourceId:
 		return m.OldResourceId(ctx)
-	case unavailability.FieldOrganizationId:
-		return m.OldOrganizationId(ctx)
 	}
 	return nil, fmt.Errorf("unknown Unavailability field %s", name)
 }
@@ -5837,13 +5475,6 @@ func (m *UnavailabilityMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetResourceId(v)
-		return nil
-	case unavailability.FieldOrganizationId:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetOrganizationId(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Unavailability field %s", name)
@@ -5912,21 +5543,15 @@ func (m *UnavailabilityMutation) ResetField(name string) error {
 	case unavailability.FieldResourceId:
 		m.ResetResourceId()
 		return nil
-	case unavailability.FieldOrganizationId:
-		m.ResetOrganizationId()
-		return nil
 	}
 	return fmt.Errorf("unknown Unavailability field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UnavailabilityMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.resource != nil {
 		edges = append(edges, unavailability.EdgeResource)
-	}
-	if m.organization != nil {
-		edges = append(edges, unavailability.EdgeOrganization)
 	}
 	return edges
 }
@@ -5939,17 +5564,13 @@ func (m *UnavailabilityMutation) AddedIDs(name string) []ent.Value {
 		if id := m.resource; id != nil {
 			return []ent.Value{*id}
 		}
-	case unavailability.EdgeOrganization:
-		if id := m.organization; id != nil {
-			return []ent.Value{*id}
-		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UnavailabilityMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -5963,12 +5584,9 @@ func (m *UnavailabilityMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UnavailabilityMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.clearedresource {
 		edges = append(edges, unavailability.EdgeResource)
-	}
-	if m.clearedorganization {
-		edges = append(edges, unavailability.EdgeOrganization)
 	}
 	return edges
 }
@@ -5979,8 +5597,6 @@ func (m *UnavailabilityMutation) EdgeCleared(name string) bool {
 	switch name {
 	case unavailability.EdgeResource:
 		return m.clearedresource
-	case unavailability.EdgeOrganization:
-		return m.clearedorganization
 	}
 	return false
 }
@@ -5992,9 +5608,6 @@ func (m *UnavailabilityMutation) ClearEdge(name string) error {
 	case unavailability.EdgeResource:
 		m.ClearResource()
 		return nil
-	case unavailability.EdgeOrganization:
-		m.ClearOrganization()
-		return nil
 	}
 	return fmt.Errorf("unknown Unavailability unique edge %s", name)
 }
@@ -6005,9 +5618,6 @@ func (m *UnavailabilityMutation) ResetEdge(name string) error {
 	switch name {
 	case unavailability.EdgeResource:
 		m.ResetResource()
-		return nil
-	case unavailability.EdgeOrganization:
-		m.ResetOrganization()
 		return nil
 	}
 	return fmt.Errorf("unknown Unavailability edge %s", name)

@@ -4,6 +4,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"github.com/openmesh/booking/ent/privacy"
+	"github.com/openmesh/booking/ent/rule"
 )
 
 // Slot holds the schema definition for the Slot entity.
@@ -30,5 +32,16 @@ func (Slot) Edges() []ent.Edge {
 			Field("resourceId").
 			Unique().
 			Required(),
+	}
+}
+
+func (Slot) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			rule.FilterSlotOrganizationQueryRule(),
+		},
+		Mutation: privacy.MutationPolicy{
+			rule.FilterSlotOrganizationMutationRule(),
+		},
 	}
 }

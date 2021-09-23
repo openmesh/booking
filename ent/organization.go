@@ -37,13 +37,9 @@ type OrganizationEdges struct {
 	Users []*User `json:"users,omitempty"`
 	// Resources holds the value of the resources edge.
 	Resources []*Resource `json:"resources,omitempty"`
-	// Bookings holds the value of the bookings edge.
-	Bookings []*Booking `json:"bookings,omitempty"`
-	// Unavailabilities holds the value of the unavailabilities edge.
-	Unavailabilities []*Unavailability `json:"unavailabilities,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [2]bool
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -62,24 +58,6 @@ func (e OrganizationEdges) ResourcesOrErr() ([]*Resource, error) {
 		return e.Resources, nil
 	}
 	return nil, &NotLoadedError{edge: "resources"}
-}
-
-// BookingsOrErr returns the Bookings value or an error if the edge
-// was not loaded in eager-loading.
-func (e OrganizationEdges) BookingsOrErr() ([]*Booking, error) {
-	if e.loadedTypes[2] {
-		return e.Bookings, nil
-	}
-	return nil, &NotLoadedError{edge: "bookings"}
-}
-
-// UnavailabilitiesOrErr returns the Unavailabilities value or an error if the edge
-// was not loaded in eager-loading.
-func (e OrganizationEdges) UnavailabilitiesOrErr() ([]*Unavailability, error) {
-	if e.loadedTypes[3] {
-		return e.Unavailabilities, nil
-	}
-	return nil, &NotLoadedError{edge: "unavailabilities"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -157,16 +135,6 @@ func (o *Organization) QueryUsers() *UserQuery {
 // QueryResources queries the "resources" edge of the Organization entity.
 func (o *Organization) QueryResources() *ResourceQuery {
 	return (&OrganizationClient{config: o.config}).QueryResources(o)
-}
-
-// QueryBookings queries the "bookings" edge of the Organization entity.
-func (o *Organization) QueryBookings() *BookingQuery {
-	return (&OrganizationClient{config: o.config}).QueryBookings(o)
-}
-
-// QueryUnavailabilities queries the "unavailabilities" edge of the Organization entity.
-func (o *Organization) QueryUnavailabilities() *UnavailabilityQuery {
-	return (&OrganizationClient{config: o.config}).QueryUnavailabilities(o)
 }
 
 // Update returns a builder for updating this Organization.

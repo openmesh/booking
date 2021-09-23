@@ -8,9 +8,11 @@ import (
 
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/booking"
+	"github.com/openmesh/booking/ent/bookingmetadatum"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/schema"
+	"github.com/openmesh/booking/ent/slot"
 	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 
@@ -38,6 +40,15 @@ func init() {
 	// auth.UpdateDefaultUpdatedAt holds the default value on update for the updatedAt field.
 	auth.UpdateDefaultUpdatedAt = authDescUpdatedAt.UpdateDefault.(func() time.Time)
 	bookingMixin := schema.Booking{}.Mixin()
+	booking.Policy = privacy.NewPolicies(schema.Booking{})
+	booking.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := booking.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	bookingMixinFields0 := bookingMixin[0].Fields()
 	_ = bookingMixinFields0
 	bookingFields := schema.Booking{}.Fields()
@@ -52,6 +63,15 @@ func init() {
 	booking.DefaultUpdatedAt = bookingDescUpdatedAt.Default.(func() time.Time)
 	// booking.UpdateDefaultUpdatedAt holds the default value on update for the updatedAt field.
 	booking.UpdateDefaultUpdatedAt = bookingDescUpdatedAt.UpdateDefault.(func() time.Time)
+	bookingmetadatum.Policy = privacy.NewPolicies(schema.BookingMetadatum{})
+	bookingmetadatum.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := bookingmetadatum.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	organizationMixin := schema.Organization{}.Mixin()
 	organizationMixinFields0 := organizationMixin[0].Fields()
 	_ = organizationMixinFields0
@@ -91,7 +111,25 @@ func init() {
 	resource.DefaultUpdatedAt = resourceDescUpdatedAt.Default.(func() time.Time)
 	// resource.UpdateDefaultUpdatedAt holds the default value on update for the updatedAt field.
 	resource.UpdateDefaultUpdatedAt = resourceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	slot.Policy = privacy.NewPolicies(schema.Slot{})
+	slot.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := slot.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	unavailabilityMixin := schema.Unavailability{}.Mixin()
+	unavailability.Policy = privacy.NewPolicies(schema.Unavailability{})
+	unavailability.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := unavailability.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	unavailabilityMixinFields0 := unavailabilityMixin[0].Fields()
 	_ = unavailabilityMixinFields0
 	unavailabilityFields := schema.Unavailability{}.Fields()
