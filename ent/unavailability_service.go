@@ -201,13 +201,26 @@ func (s *unavailabilityService) DeleteUnavailability(
 	return booking.DeleteUnavailabilityResponse{}
 }
 
-func deleteUnavailability(ctx context.Context, tx *Tx, id int) error {
-	err := tx.Unavailability.
-		DeleteOneID(id).
+func deleteUnavailability(ctx context.Context, tx *Tx, id int, resourceID int) error {
+	a, err := tx.Unavailability.
+		Delete().
+		Where(
+			unavailability.ID(id),
+			unavailability.ResourceId(resourceID),
+		).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete unavailability: %w", err)
 	}
+
+	if a == 0 {
+		return booking.Errorf(
+			booking.EUNAVAILABILITYNOTFOUND,
+			"Could not find unavailability with ID %d",
+			id,
+		)
+	}
+
 	return nil
 }
 
@@ -255,7 +268,11 @@ func findUnavailabilityByID(
 	u, err := q.First(ctx)
 	var nfe *NotFoundError
 	if errors.As(err, &nfe) {
-		return nil, booking.Errorf(booking.EUNAVAILABILITYNOTFOUND, "Could not find unavailability with ID %d", id)
+		return nil, booking.Errorf(
+			booking.EUNAVAILABILITYNOTFOUND,
+			"Could not find unavailability with ID %d",
+			id,
+		)
 	}
 	if err != nil {
 		return nil, err

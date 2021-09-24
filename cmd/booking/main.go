@@ -291,7 +291,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 
 const (
 	// DefaultConfigPath is the default path to the application configuration.
-	DefaultConfigPath = "~/booking.conf"
+	DefaultConfigPath = "./booking.conf"
 
 	// DefaultDSN is the default datasource name.
 	DefaultDSN = "~/.booking/db"

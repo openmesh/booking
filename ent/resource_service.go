@@ -38,12 +38,7 @@ func (s *resourceService) FindResourceByID(
 		return rq.WithSlots()
 	})
 	if err != nil {
-		return booking.FindResourceByIDResponse{Err: err}
-	}
-
-	r.Edges.Slots, err = r.QuerySlots().All(ctx)
-	if err != nil {
-		return booking.FindResourceByIDResponse{Err: err}
+		return booking.FindResourceByIDResponse{Err: fmt.Errorf("failed to find booking by id: %w", err)}
 	}
 
 	return booking.FindResourceByIDResponse{Resource: r.toModel()}
@@ -178,7 +173,7 @@ func findResourceByID(
 		return nil, booking.Errorf(booking.ERESOURCENOTFOUND, "Could not find resource with ID %d", id)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find resource: %w", err)
 	}
 
 	return r, nil
@@ -193,36 +188,39 @@ func findResources(
 	req booking.FindResourcesRequest,
 	withEdges func(*ResourceQuery) *ResourceQuery,
 ) ([]*Resource, int, error) {
-	query := tx.Resource.Query()
+	q := tx.Resource.Query()
 	if req.ID != nil {
-		query.Where(resource.ID(*req.ID))
+		q.Where(resource.ID(*req.ID))
 	}
 	if req.Name != nil {
-		query.Where(resource.Name(*req.Name))
+		q.Where(resource.Name(*req.Name))
 	}
 	if req.Description != nil {
-		query.Where(resource.Description(*req.Description))
+		q.Where(resource.Description(*req.Description))
 	}
-	totalItems, err := query.Count(ctx)
+
+	c, err := q.Count(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count resources: %w", err)
 	}
-	query = query.Offset(req.Offset)
+
+	q = q.Offset(req.Offset)
 	if req.Limit == 0 {
-		query.Limit(10)
+		q.Limit(10)
 	} else {
-		query.Limit(req.Limit)
-	}
-	if withEdges != nil {
-		withEdges(query)
+		q.Limit(req.Limit)
 	}
 
-	r, err := query.All(ctx)
+	if withEdges != nil {
+		withEdges(q)
+	}
+
+	r, err := q.All(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query resources: %w", err)
 	}
 
-	return r, totalItems, nil
+	return r, c, nil
 }
 
 // checkForResourceNameConflict queries the database to see if a resource with a

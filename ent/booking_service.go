@@ -8,7 +8,6 @@ import (
 
 	"github.com/openmesh/booking"
 	entbooking "github.com/openmesh/booking/ent/booking"
-	"github.com/openmesh/booking/ent/resource"
 )
 
 type bookingService struct {
@@ -35,36 +34,41 @@ func (s *bookingService) FindBookingByID(
 		}
 	}
 
-	b, err := findBookingByID(ctx, tx, req.ID)
-	var nfe *NotFoundError
-	if errors.As(err, &nfe) {
-		return booking.FindBookingByIDResponse{
-			Err: booking.WrapNotFoundError("booking"),
-		}
-	}
+	b, err := findBookingByID(ctx, tx, req.ID, func(bq *BookingQuery) *BookingQuery {
+		return bq.WithResource().WithMetadata()
+	})
 	if err != nil {
 		return booking.FindBookingByIDResponse{
 			Err: fmt.Errorf("failed to find booking by id: %w", err),
-		}
-	}
-	if err := b.attachEdges(ctx); err != nil {
-		return booking.FindBookingByIDResponse{
-			Err: fmt.Errorf("failed to attach edges to booking: %w", err),
 		}
 	}
 
 	return booking.FindBookingByIDResponse{Booking: b.toModel()}
 }
 
-func findBookingByID(ctx context.Context, tx *Tx, id int) (*Booking, error) {
-	orgID := booking.OrganizationIDFromContext(ctx)
-	return tx.Booking.
+func findBookingByID(
+	ctx context.Context,
+	tx *Tx,
+	id int,
+	withEdges func(*BookingQuery) *BookingQuery,
+) (*Booking, error) {
+	q := tx.Booking.
 		Query().
-		Where(
-			entbooking.ID(id),
-			entbooking.HasResourceWith(resource.OrganizationIdEQ(orgID)),
-		).
-		First(ctx)
+		Where(entbooking.ID(id))
+	if withEdges != nil {
+		withEdges(q)
+	}
+
+	b, err := q.First(ctx)
+	var nfe *NotFoundError
+	if errors.As(err, &nfe) {
+		return nil, booking.Errorf(booking.EBOOKINGNOTFOUND, "Could not find booking with ID %d", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to find booking: %w", err)
+	}
+
+	return b, nil
 }
 
 // Retreives a list of bookings based on a filter. Only returns bookings that
@@ -81,50 +85,72 @@ func (s *bookingService) FindBookings(
 			Err: fmt.Errorf("failed to start transaction: %w", err),
 		}
 	}
-	orgID := booking.OrganizationIDFromContext(ctx)
-	query := tx.Booking.Query().
-		Where(entbooking.HasResourceWith(resource.OrganizationId(orgID)))
-	if req.ID != nil {
-		query = query.Where(entbooking.ID(*req.ID))
-	}
-	if req.ResourceID != nil {
-		query = query.Where(entbooking.ResourceId(*req.ResourceID))
-	}
-	if req.Status != nil {
-		query = query.Where(entbooking.Status(*req.Status))
-	}
-	if req.StartTimeAfter != nil {
-		query = query.Where(entbooking.StartTimeGTE(*req.StartTimeAfter))
-	}
-	if req.EndTimeBefore != nil {
-		query = query.Where(entbooking.EndTimeLTE(*req.EndTimeBefore))
-	}
-	totalItems, err := query.Count(ctx)
+
+	b, totalItems, err := findBookings(ctx, tx, req, func(bq *BookingQuery) *BookingQuery {
+		return bq.WithMetadata().WithResource()
+	})
 	if err != nil {
 		return booking.FindBookingsResponse{
-			Err: fmt.Errorf("failed to count bookings: %w", err),
-		}
-	}
-	query = query.Offset(req.Offset)
-	if req.Limit == 0 {
-		query = query.Limit(10)
-	} else {
-		query = query.Limit(req.Limit)
-	}
-	bookings, err := query.
-		WithMetadata().
-		WithResource().
-		All(ctx)
-	if err != nil {
-		return booking.FindBookingsResponse{
-			Err: fmt.Errorf("failed to query bookings: %w", err),
+			Err: fmt.Errorf("failed to find bookings: %w", err),
 		}
 	}
 
 	return booking.FindBookingsResponse{
-		Bookings:   Bookings(bookings).toModels(),
+		Bookings:   Bookings(b).toModels(),
 		TotalItems: totalItems,
 	}
+}
+
+// findBookings is a helper function that retrieves a list of matching bookings.
+// Also returns a total matching count which may differ from the number of
+// results if a limit is set. The query can be expanded upon using the withEdges
+// argument. This is primarily used for eager loading of edges.
+func findBookings(
+	ctx context.Context,
+	tx *Tx,
+	req booking.FindBookingsRequest,
+	withEdges func(*BookingQuery) *BookingQuery,
+) ([]*Booking, int, error) {
+	q := tx.Booking.Query()
+
+	if req.ID != nil {
+		q.Where(entbooking.ID(*req.ID))
+	}
+	if req.ResourceID != nil {
+		q.Where(entbooking.ResourceId(*req.ResourceID))
+	}
+	if req.Status != nil {
+		q.Where(entbooking.Status(*req.Status))
+	}
+	if req.StartTimeAfter != nil {
+		q.Where(entbooking.StartTimeGTE(*req.StartTimeAfter))
+	}
+	if req.EndTimeBefore != nil {
+		q.Where(entbooking.EndTimeLTE(*req.EndTimeBefore))
+	}
+
+	c, err := q.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	q = q.Offset(req.Offset)
+	if req.Limit == 0 {
+		q = q.Limit(10)
+	} else {
+		q = q.Limit(req.Limit)
+	}
+
+	if withEdges != nil {
+		withEdges(q)
+	}
+
+	b, err := q.All(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query bookings: %w", err)
+	}
+
+	return b, c, nil
 }
 
 // Creates a new booking and assigns the current user as the owner.
@@ -132,7 +158,6 @@ func (s *bookingService) CreateBooking(
 	ctx context.Context,
 	req booking.CreateBookingRequest,
 ) booking.CreateBookingResponse {
-	orgID := booking.OrganizationIDFromContext(ctx)
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
 		return booking.CreateBookingResponse{
@@ -140,69 +165,85 @@ func (s *bookingService) CreateBooking(
 		}
 	}
 
-	// Get resource that booking will be created for.
-	r, err := tx.Resource.
-		Query().
-		Where(
-			resource.ID(req.ResourceID),
-			resource.OrganizationId(orgID),
-		).
-		First(ctx)
-	var nfe *NotFoundError
-	if errors.As(err, &nfe) {
-		return booking.CreateBookingResponse{
-			Err: booking.WrapNotFoundError("resource"),
-		}
-	}
+	err = checkForBookingTimeConflict(ctx, tx, req.ResourceID, req.StartTime, req.EndTime)
 	if err != nil {
 		return booking.CreateBookingResponse{
-			Err: fmt.Errorf("failed to get resource: %w", err),
+			Err: fmt.Errorf("booking time conflict check failed: %w", err),
 		}
 	}
 
-	// If quantity available is nil then there is no limit to the number of
-	// bookings that can be made for a resource.
-	if r.QuantityAvailable != nil {
-		// Ensure that quantity of bookings available for resource has not been
-		// exceeded.
-		if count, err := countOverlappingBookings(
-			ctx,
-			tx,
-			req.ResourceID,
-			req.StartTime,
-			req.EndTime,
-		); err != nil {
-			return booking.CreateBookingResponse{
-				Err: fmt.Errorf("failed to count overlapping bookings: %w", err),
-			}
-		} else if count >= *r.QuantityAvailable {
-			return booking.CreateBookingResponse{
-				Err: booking.Error{
-					Code:   booking.ECONFLICT,
-					Detail: "Maximum bookings for specified resource reached.",
-					Title:  "Resource unavailable",
-				},
-			}
+	b, err := createBooking(ctx, tx, req, func(b *Booking) (*Booking, error) {
+		b.Edges.Metadata, err = b.QueryMetadata().All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query metadata")
 		}
-	}
-
-	b, err := createBooking(ctx, tx, req)
+		b.Edges.Resource, err = b.QueryResource().First(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query resource")
+		}
+		return b, nil
+	})
 	if err != nil {
 		return booking.CreateBookingResponse{
 			Err: fmt.Errorf("failed to create booking: %w", err),
 		}
 	}
 
-	if err := b.attachEdges(ctx); err != nil {
+	err = tx.Commit()
+	if err != nil {
 		return booking.CreateBookingResponse{
-			Err: err,
+			Err: fmt.Errorf("failed to create booking: %w", err),
 		}
 	}
 
 	return booking.CreateBookingResponse{
 		Booking: b.toModel(),
-		Err:     tx.Commit(),
 	}
+}
+
+func checkForBookingTimeConflict(
+	ctx context.Context,
+	tx *Tx,
+	rid int,
+	st time.Time,
+	et time.Time,
+	allowedIDs ...int,
+) error {
+	r, err := findResourceByID(ctx, tx, rid, nil)
+	if err != nil {
+		return fmt.Errorf("failed to find resource: %w", err)
+	}
+	// If quantity available is nil then there is no limit to the number of
+	// bookings that can made for the specified resource and we can return early.
+	if r.QuantityAvailable == nil {
+		return nil
+	}
+
+	c, err := tx.Booking.
+		Query().
+		Where(entbooking.IDNotIn(allowedIDs...)).
+		Where(
+			entbooking.ResourceId(rid),
+			entbooking.Or(
+				// New booking begins during an existing booking.
+				entbooking.And(entbooking.StartTimeLTE(st), entbooking.EndTimeGTE(st)),
+				// New booking ends during an exsting booking.
+				entbooking.And(entbooking.StartTimeLTE(et), entbooking.EndTimeGTE(et)),
+				// New booking is entirely during an existing booking.
+				entbooking.And(entbooking.StartTimeLTE(st), entbooking.EndTimeGTE(et)),
+				// Existing booking is entirely during new booking.
+				entbooking.And(entbooking.StartTimeGTE(st), entbooking.EndTimeLTE(et)),
+			),
+		).
+		Count(ctx)
+
+	if c >= *r.QuantityAvailable {
+		return booking.Errorf(
+			booking.EBOOKINGCONFLICT,
+			"Maximum quantity of bookings allowed for a resource at a single time exceeded",
+		)
+	}
+	return nil
 }
 
 func countOverlappingBookings(ctx context.Context, tx *Tx, resourceID int, startTime time.Time, endTime time.Time) (int, error) {
@@ -224,7 +265,12 @@ func countOverlappingBookings(ctx context.Context, tx *Tx, resourceID int, start
 		Count(ctx)
 }
 
-func createBooking(ctx context.Context, tx *Tx, req booking.CreateBookingRequest) (*Booking, error) {
+func createBooking(
+	ctx context.Context,
+	tx *Tx,
+	req booking.CreateBookingRequest,
+	attachEdges func(*Booking) (*Booking, error),
+) (*Booking, error) {
 	var m []*BookingMetadatum
 	for k, v := range req.Metadata {
 		m = append(m, &BookingMetadatum{
@@ -233,7 +279,7 @@ func createBooking(ctx context.Context, tx *Tx, req booking.CreateBookingRequest
 		})
 	}
 
-	return tx.Booking.
+	b, err := tx.Booking.
 		Create().
 		SetResourceID(req.ResourceID).
 		SetStatus(req.Status).
@@ -241,18 +287,15 @@ func createBooking(ctx context.Context, tx *Tx, req booking.CreateBookingRequest
 		SetEndTime(req.EndTime).
 		AddMetadata(m...).
 		Save(ctx)
-}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create booking: %w", err)
+	}
 
-func (b *Booking) attachEdges(ctx context.Context) (err error) {
-	b.Edges.Metadata, err = b.QueryMetadata().All(ctx)
+	b, err = attachEdges(b)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to attach edges: %w", err)
 	}
-	b.Edges.Resource, err = b.QueryResource().First(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
+	return b, nil
 }
 
 // Updates an existing booking by ID. Only the booking owner can update a
@@ -272,62 +315,62 @@ func (s *bookingService) UpdateBooking(
 		}
 	}
 
-	_, err = findBookingByID(ctx, tx, req.ID)
-	var nfe *NotFoundError
-	if errors.As(err, &nfe) {
-		return booking.UpdateBookingResponse{
-			Err: booking.WrapNotFoundError("booking"),
-		}
-	}
+	err = checkForBookingTimeConflict(ctx, tx, req.ResourceID, req.StartTime, req.EndTime)
 	if err != nil {
 		return booking.UpdateBookingResponse{
-			Err: fmt.Errorf("failed to find booking by id: %w", err),
+			Err: fmt.Errorf("booking time conflict check failed: %w", err),
 		}
 	}
-	return booking.UpdateBookingResponse{}
-}
 
-func canUpdateBooking(ctx context.Context, tx *Tx, req booking.UpdateBookingRequest) (bool, error) {
-	// Booking exists
-	_, err := findBookingByID(ctx, tx, req.ID)
-	var nfe *NotFoundError
-	if errors.As(err, &nfe) {
-		return false, booking.WrapNotFoundError("booking")
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to find booking by id: %w", err)
-	}
-
-	// Overlaps with too many existing bookings
-	r, err := findResourceByID(ctx, tx, req.ID)
-	if errors.As(err, &nfe) {
-		return false, booking.WrapNotFoundError("booking")
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to find resource by id: %w", err)
-	}
-	if r.QuantityAvailable != nil {
-		obc, err := countOverlappingBookings(ctx, tx, req.ResourceID, req.StartTime, req.EndTime)
+	b, err := updateBooking(ctx, tx, req, func(b *Booking) (*Booking, error) {
+		b.Edges.Resource, err = b.QueryResource().First(ctx)
 		if err != nil {
+			return nil, fmt.Errorf("failed to query resource: %w", err)
+		}
+		b.Edges.Metadata, err = b.QueryMetadata().All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query metadata: %w", err)
+		}
+		return b, nil
+	})
 
-		}
-		if obc >= *r.QuantityAvailable {
-			return false, booking.Errorf(booking.EBOOKINGCONFLICT, "Failed to create")
-		}
+	return booking.UpdateBookingResponse{
+		Booking: b.toModel(),
 	}
-	return false, nil
 }
 
-func updateBooking(ctx context.Context, tx *Tx, req booking.UpdateBookingRequest) error {
-	orgID := booking.OrganizationIDFromContext(ctx)
-	tx.Booking.
-		Update().
-		Where(
-			entbooking.ID(req.ID),
-			entbooking.HasResourceWith(resource.OrganizationId(orgID)),
-		).
+func updateBooking(
+	ctx context.Context,
+	tx *Tx,
+	req booking.UpdateBookingRequest,
+	attachEdges func(*Booking) (*Booking, error),
+) (*Booking, error) {
+	b, err := tx.Booking.
+		UpdateOneID(req.ID).
+		SetStartTime(req.StartTime).
+		SetEndTime(req.EndTime).
+		SetResourceID(req.ResourceID).
+		SetStatus(req.Status).
 		Save(ctx)
-	return nil
+
+	var nfe *NotFoundError
+	if errors.As(err, &nfe) {
+		return nil, booking.Errorf(
+			booking.EBOOKINGNOTFOUND,
+			"Could not find booking with ID %d",
+			req.ID,
+		)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to update booking: %w", err)
+	}
+
+	b, err = attachEdges(b)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach edges: %w", err)
+	}
+
+	return b, nil
 }
 
 // Permanently removes a booking by ID. Only the booking owner may delete a
@@ -337,7 +380,38 @@ func (s *bookingService) DeleteBooking(
 	ctx context.Context,
 	req booking.DeleteBookingRequest,
 ) booking.DeleteBookingResponse {
-	panic("not implemented") // TODO: Implement
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return booking.DeleteBookingResponse{
+			Err: fmt.Errorf("failed to start transaction: %w", err),
+		}
+	}
+	err = deleteBooking(ctx, tx, req.ID)
+	if err != nil {
+		return booking.DeleteBookingResponse{
+			Err: fmt.Errorf("failed to delete booking: %w", err),
+		}
+	}
+	return booking.DeleteBookingResponse{}
+}
+
+func deleteBooking(ctx context.Context, tx *Tx, id int) error {
+	a, err := tx.Booking.
+		Delete().
+		Where(entbooking.ID(id)).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete booking: %w", err)
+	}
+
+	if a == 0 {
+		return booking.Errorf(
+			booking.EBOOKINGNOTFOUND,
+			"Could not find booking with ID %d",
+			id,
+		)
+	}
+	return nil
 }
 
 func (b *Booking) toModel() *booking.Booking {

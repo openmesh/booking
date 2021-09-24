@@ -24,6 +24,9 @@ const (
 	// EUNAVAILABILITYNOTFOUND indicates that a request was made to retrieve an
 	// unavailability that does not exist or is not accessible by the requester.
 	EUNAVAILABILITYNOTFOUND = "unavailability_not_found"
+	// EBOOKINGNOTFOUND indicates that a request was made to retrieve a booking
+	// that does not exist or is not accessible by the requester.
+	EBOOKINGNOTFOUND = "booking_not_found"
 	// EUNAVAILABILITYTIMECONFLICT indicates that a request was made to create
 	// update an unavailability which would have conflicted with an existing
 	// unavailability.

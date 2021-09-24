@@ -76,10 +76,6 @@ func NewServer() *Server {
 	// Setup error handling routes.
 	s.router.NotFoundHandler = http.HandlerFunc(s.handleNotFound)
 
-	// Handle embedded asset serving. This serves files embedded from http/assets.
-	// fs := http.FileServer(http.Dir("./http/assets"))
-	// s.router.PathPrefix("/static/").Handler(fs)
-
 	// Setup endpoint to display deployed version.
 	s.router.HandleFunc("/debug/version", s.handleVersion).Methods("GET")
 	s.router.HandleFunc("/debug/commit", s.handleCommit).Methods("GET")
@@ -88,16 +84,20 @@ func NewServer() *Server {
 	router := s.router.PathPrefix("/").Subrouter()
 	router.Use(loadFlash)
 
-	//spaRoutes := []string{
-	//	"/",
-	//	"/signup",
-	//}
-	//
-	//for _, route := range spaRoutes {
-	//	router.HandleFunc(route, s.handleSpaRoute).Methods("GET")
-	//}
-	//
-	//router.HandleFunc("/manifest", s.handleManifest).Methods("GET")
+	// Handle embedded asset serving. This serves files embedded from http/assets.
+	fs := http.FileServer(http.Dir("./http/assets"))
+	s.router.PathPrefix("/static/").Handler(fs)
+
+	spaRoutes := []string{
+		"/",
+		"/signup",
+	}
+
+	for _, route := range spaRoutes {
+		router.HandleFunc(route, s.handleSpaRoute).Methods("GET")
+	}
+
+	router.HandleFunc("/manifest", s.handleManifest).Methods("GET")
 
 	// router.Use(trackMetrics)
 
@@ -299,20 +299,20 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		Error(w, r, booking.Errorf(booking.EUNAUTHORIZED, "No API key present."))
-		return
+		// Error(w, r, booking.Errorf(booking.EUNAUTHORIZED, "No API key present."))
+		// return
 
-		// Read session from secure cookie.
-		session, _ := s.session(r)
+		// // Read session from secure cookie.
+		// session, _ := s.session(r)
 
-		// Read user, if available. Ignore if fetching assets.
-		if session.UserID != 0 {
-			if user, err := s.UserService.FindUserByID(r.Context(), session.UserID); err != nil {
-				s.logger.Log("cannot find session user: id=%d err=%s", session.UserID, err)
-			} else {
-				r = r.WithContext(booking.NewContextWithUser(r.Context(), user))
-			}
-		}
+		// // Read user, if available. Ignore if fetching assets.
+		// if session.UserID != 0 {
+		// 	if user, err := s.UserService.FindUserByID(r.Context(), session.UserID); err != nil {
+		// 		s.logger.Log("cannot find session user: id=%d err=%s", session.UserID, err)
+		// 	} else {
+		// 		r = r.WithContext(booking.NewContextWithUser(r.Context(), user))
+		// 	}
+		// }
 
 		next.ServeHTTP(w, r)
 	})
