@@ -39,6 +39,7 @@ func (s *unavailabilityService) FindUnavailabilityByID(
 		ctx,
 		tx,
 		req.ID,
+		req.ResourceID,
 		func(uq *UnavailabilityQuery) *UnavailabilityQuery {
 			uq.WithResource(func(rq *ResourceQuery) {
 				rq.WithSlots()
@@ -102,62 +103,36 @@ func (s *unavailabilityService) CreateUnavailability(
 		return booking.CreateUnavailabilityResponse{Err: err}
 	}
 
-	err = checkForUnavailabilityTimeConflict(ctx, tx, req.StartTime, req.EndTime)
+	err = checkForUnavailabilityTimeConflict(ctx, tx, req.ResourceID, req.StartTime, req.EndTime)
 	if err != nil {
 		return booking.CreateUnavailabilityResponse{
 			Err: fmt.Errorf("unvailability time conflict check failed: %w", err),
 		}
 	}
 
-	// Create unavailability
-	u, err := tx.Unavailability.
-		Create().
-		SetResourceID(req.ResourceID).
-		SetStartTime(req.StartTime).
-		SetEndTime(req.EndTime).
-		Save(ctx)
+	u, err := createUnavailability(ctx, tx, req, func(u *Unavailability) (*Unavailability, error) {
+		u.Edges.Resource, err = u.QueryResource().
+			WithSlots().
+			First(ctx)
+		return u, err
+	})
 	if err != nil {
-		return booking.CreateUnavailabilityResponse{Err: err}
+		return booking.CreateUnavailabilityResponse{
+			Err: fmt.Errorf("failed to create unavailability: %w", err),
+		}
 	}
 
-	u.Edges.Resource, err = u.QueryResource().WithSlots().First(ctx)
+	err = tx.Commit()
 	if err != nil {
-		return booking.CreateUnavailabilityResponse{Err: tx.Rollback()}
+		return booking.CreateUnavailabilityResponse{
+			Err: fmt.Errorf("failed to commit transaction: %w", err),
+		}
 	}
 
 	return booking.CreateUnavailabilityResponse{
 		Unavailability: u.toModel(),
 		Err:            tx.Commit(),
 	}
-}
-
-func checkForUnavailabilityTimeConflict(ctx context.Context, tx *Tx, st time.Time, et time.Time) error {
-	// Ensure that new unavailability will not conflict with any existing availabilities.
-	count, err := tx.Unavailability.
-		Query().
-		Where(
-			unavailability.Or(
-				// New unavailability begins during an existing unavailability
-				unavailability.And(unavailability.StartTimeLTE(st), unavailability.EndTimeGTE(st)),
-				// New unavailability ends during an exsting unavailability
-				unavailability.And(unavailability.StartTimeLTE(et), unavailability.EndTimeGTE(et)),
-				// New unavailability is entirely during an existing unavailability
-				unavailability.And(unavailability.StartTimeLTE(st), unavailability.EndTimeGTE(et)),
-				// Existing unavailability is entirely during new unavailability
-				unavailability.And(unavailability.StartTimeGTE(st), unavailability.EndTimeLTE(et)),
-			),
-		).
-		Count(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to count unavailabilities")
-	}
-	if count > 0 {
-		return booking.Errorf(
-			booking.EUNAVAILABILITYTIMECONFLICT,
-			"Specified unavailability would conflict with an already existing unavailability",
-		)
-	}
-	return nil
 }
 
 // Updates an existing unavailbility by ID. Only the unavailability owner can
@@ -171,65 +146,34 @@ func (s *unavailabilityService) UpdateUnavailability(
 	req booking.UpdateUnavailabilityRequest,
 ) booking.UpdateUnavailabilityResponse {
 	tx, err := s.client.Tx(ctx)
-
-	orgID := booking.OrganizationIDFromContext(ctx)
-	// Retrieve unavailability
-	u, err := tx.Unavailability.
-		Query().
-		Where(
-			unavailability.ID(req.ID),
-			unavailability.ResourceId(req.ResourceID),
-			unavailability.HasResourceWith(resource.OrganizationId(orgID)),
-		).First(ctx)
-
-	if _, ok := err.(*NotFoundError); ok {
-		return booking.UpdateUnavailabilityResponse{Err: booking.WrapNotFoundError("unavailability")}
-	}
 	if err != nil {
-		return booking.UpdateUnavailabilityResponse{Err: err}
-	}
-
-	// Ensure that new unavailability will not conflict with any existing availabilities.
-	if count, err := tx.Unavailability.
-		Query().
-		Where(
-			unavailability.IDNEQ(req.ID),
-			unavailability.HasResourceWith(resource.ID(req.ResourceID)),
-			unavailability.HasResourceWith(resource.OrganizationId(booking.OrganizationIDFromContext(ctx))),
-			unavailability.Or(
-				// New unavailability begins during an existing unavailability
-				unavailability.And(unavailability.StartTimeLTE(req.StartTime), unavailability.EndTimeGTE(req.StartTime)),
-				// New unavailability ends during an exsting unavailability
-				unavailability.And(unavailability.StartTimeLTE(req.EndTime), unavailability.EndTimeGTE(req.EndTime)),
-				// New unavailability is entirely during an existing unavailability
-				unavailability.And(unavailability.StartTimeLTE(req.StartTime), unavailability.EndTimeGTE(req.EndTime)),
-				// Existing unavailability is entirely during an existing unavailability
-				unavailability.And(unavailability.StartTimeGTE(req.StartTime), unavailability.EndTimeLTE(req.EndTime)),
-			),
-		).
-		Count(ctx); err != nil {
-		return booking.UpdateUnavailabilityResponse{Err: err}
-	} else if count > 0 {
 		return booking.UpdateUnavailabilityResponse{
-			Err: booking.Error{
-				Code:   booking.ECONFLICT,
-				Detail: "Request unavailability would conflict with existing unavailabilities. Check start and end times for potential overlap.",
-				Title:  "Conflicting unavailability found",
-			},
+			Err: fmt.Errorf("failed to start transaction: %w", err),
 		}
 	}
 
-	u, err = tx.Unavailability.UpdateOne(u).SetStartTime(req.StartTime).SetEndTime(req.EndTime).Save(ctx)
+	err = checkForUnavailabilityTimeConflict(ctx, tx, req.ResourceID, req.StartTime, req.EndTime, req.ID)
 	if err != nil {
-		return booking.UpdateUnavailabilityResponse{Err: tx.Rollback()}
+		return booking.UpdateUnavailabilityResponse{
+			Err: fmt.Errorf("unavailability time conflict check failed: %w", err),
+		}
 	}
 
-	u.Edges.Resource, err = u.QueryResource().WithSlots().First(ctx)
+	u, err := updateUnavailability(ctx, tx, req, func(u *Unavailability) (*Unavailability, error) {
+		u.Edges.Resource, err = u.QueryResource().
+			WithSlots().
+			First(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach resource to unavailability: %w", err)
+		}
+		return u, nil
+	})
 	if err != nil {
-		return booking.UpdateUnavailabilityResponse{Err: tx.Rollback()}
+		return booking.UpdateUnavailabilityResponse{
+			Err: fmt.Errorf("failed to update unavailability: %w", err),
+		}
 	}
 
-	// Ensure unavailability exists
 	return booking.UpdateUnavailabilityResponse{Unavailability: u.toModel()}
 }
 
@@ -255,6 +199,16 @@ func (s *unavailabilityService) DeleteUnavailability(
 	}
 
 	return booking.DeleteUnavailabilityResponse{}
+}
+
+func deleteUnavailability(ctx context.Context, tx *Tx, id int) error {
+	err := tx.Unavailability.
+		DeleteOneID(id).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete unavailability: %w", err)
+	}
+	return nil
 }
 
 func (u *Unavailability) toModel() *booking.Unavailability {
@@ -285,12 +239,16 @@ func findUnavailabilityByID(
 	ctx context.Context,
 	tx *Tx,
 	id int,
+	rid int,
 	withEdges func(*UnavailabilityQuery) *UnavailabilityQuery,
 ) (*Unavailability, error) {
 	u, err := withEdges(
 		tx.Unavailability.
 			Query().
-			Where(unavailability.ID(id)),
+			Where(
+				unavailability.ID(id),
+				unavailability.ResourceId(rid),
+			),
 	).First(ctx)
 
 	var nfe *NotFoundError
@@ -320,13 +278,13 @@ func findUnavailabilties(
 		Where(unavailability.ResourceId(req.ResourceID))
 
 	if req.ID != nil {
-		query = query.Where(unavailability.ID(*req.ID))
+		query.Where(unavailability.ID(*req.ID))
 	}
 	if req.From != nil {
-		query = query.Where(unavailability.StartTimeGTE(*req.From))
+		query.Where(unavailability.StartTimeGTE(*req.From))
 	}
 	if req.To != nil {
-		query = query.Where(unavailability.EndTimeLTE(*req.To))
+		query.Where(unavailability.EndTimeLTE(*req.To))
 	}
 	totalItems, err := query.Count(ctx)
 	if err != nil {
@@ -335,14 +293,108 @@ func findUnavailabilties(
 
 	query = query.Offset(req.Offset)
 	if req.Limit == 0 {
-		query = query.Limit(10)
+		query.Limit(10)
 	} else {
-		query = query.Limit(req.Limit)
+		query.Limit(req.Limit)
 	}
-	u, err := withEdges(query).All(ctx)
+
+	if withEdges != nil {
+		withEdges(query)
+	}
+
+	u, err := query.All(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query unavailabilities: %w", err)
 	}
 
 	return u, totalItems, nil
+}
+
+func createUnavailability(
+	ctx context.Context,
+	tx *Tx,
+	req booking.CreateUnavailabilityRequest,
+	attachEdges func(*Unavailability) (*Unavailability, error),
+) (*Unavailability, error) {
+	u, err := tx.Unavailability.
+		Create().
+		SetResourceID(req.ResourceID).
+		SetStartTime(req.StartTime).
+		SetEndTime(req.EndTime).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create unavailability: %w", err)
+	}
+
+	u, err = attachEdges(u)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach edges: %w", err)
+	}
+
+	return u, nil
+}
+
+func checkForUnavailabilityTimeConflict(
+	ctx context.Context,
+	tx *Tx,
+	rid int,
+	st time.Time,
+	et time.Time,
+	allowedIDs ...int,
+) error {
+	count, err := tx.Unavailability.
+		Query().
+		Where(unavailability.IDNotIn(allowedIDs...)).
+		Where(
+			unavailability.ResourceId(rid),
+			unavailability.Or(
+				// New unavailability begins during an existing unavailability
+				unavailability.And(unavailability.StartTimeLTE(st), unavailability.EndTimeGTE(st)),
+				// New unavailability ends during an exsting unavailability
+				unavailability.And(unavailability.StartTimeLTE(et), unavailability.EndTimeGTE(et)),
+				// New unavailability is entirely during an existing unavailability
+				unavailability.And(unavailability.StartTimeLTE(st), unavailability.EndTimeGTE(et)),
+				// Existing unavailability is entirely during new unavailability
+				unavailability.And(unavailability.StartTimeGTE(st), unavailability.EndTimeLTE(et)),
+			),
+		).
+		Count(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to count unavailabilities")
+	}
+	if count > 0 {
+		return booking.Errorf(
+			booking.EUNAVAILABILITYTIMECONFLICT,
+			"Specified unavailability would conflict with an already existing unavailability",
+		)
+	}
+	return nil
+}
+
+func updateUnavailability(
+	ctx context.Context,
+	tx *Tx,
+	req booking.UpdateUnavailabilityRequest,
+	attachEdges func(*Unavailability) (*Unavailability, error),
+) (*Unavailability, error) {
+	u, err := findUnavailabilityByID(ctx, tx, req.ID, req.ResourceID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find unavailability by id: %w", err)
+	}
+
+	u, err = tx.Unavailability.
+		UpdateOne(u).
+		SetStartTime(req.StartTime).
+		SetEndTime(req.EndTime).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update unavailability by id: %w", err)
+	}
+
+	u, err = attachEdges(u)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach edges: %w", err)
+	}
+
+	return u, nil
 }
