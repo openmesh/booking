@@ -242,15 +242,17 @@ func findUnavailabilityByID(
 	rid int,
 	withEdges func(*UnavailabilityQuery) *UnavailabilityQuery,
 ) (*Unavailability, error) {
-	u, err := withEdges(
-		tx.Unavailability.
-			Query().
-			Where(
-				unavailability.ID(id),
-				unavailability.ResourceId(rid),
-			),
-	).First(ctx)
+	q := tx.Unavailability.
+		Query().
+		Where(
+			unavailability.ID(id),
+			unavailability.ResourceId(rid),
+		)
+	if withEdges != nil {
+		withEdges(q)
+	}
 
+	u, err := q.First(ctx)
 	var nfe *NotFoundError
 	if errors.As(err, &nfe) {
 		return nil, booking.Errorf(booking.EUNAVAILABILITYNOTFOUND, "Could not find unavailability with ID %d", id)

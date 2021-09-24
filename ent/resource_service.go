@@ -34,7 +34,9 @@ func (s *resourceService) FindResourceByID(
 		}
 	}
 
-	r, err := findResourceByID(ctx, tx, req.ID)
+	r, err := findResourceByID(ctx, tx, req.ID, func(rq *ResourceQuery) *ResourceQuery {
+		return rq.WithSlots()
+	})
 	if err != nil {
 		return booking.FindResourceByIDResponse{Err: err}
 	}
@@ -59,7 +61,9 @@ func (s *resourceService) FindResources(
 		return booking.FindResourcesResponse{Err: fmt.Errorf("failed to start transaction: %w", err)}
 	}
 
-	r, totalItems, err := findResources(ctx, tx, req)
+	r, totalItems, err := findResources(ctx, tx, req, func(rq *ResourceQuery) *ResourceQuery {
+		return rq.WithSlots()
+	})
 	if err != nil {
 		return booking.FindResourcesResponse{Err: fmt.Errorf("failed to find resources: %w", err)}
 	}
@@ -155,12 +159,20 @@ func (s *resourceService) DeleteResource(ctx context.Context, req booking.Delete
 }
 
 // findResourceByID retrieves a single resource by ID from the database.
-func findResourceByID(ctx context.Context, tx *Tx, id int) (*Resource, error) {
-	r, err := tx.Resource.
+func findResourceByID(
+	ctx context.Context,
+	tx *Tx,
+	id int,
+	withEdges func(*ResourceQuery) *ResourceQuery,
+) (*Resource, error) {
+	q := tx.Resource.
 		Query().
-		Where(resource.ID(id)).
-		First(ctx)
+		Where(resource.ID(id))
+	if withEdges != nil {
+		withEdges(q)
+	}
 
+	r, err := q.First(ctx)
 	var nfe *NotFoundError
 	if errors.As(err, &nfe) {
 		return nil, booking.Errorf(booking.ERESOURCENOTFOUND, "Could not find resource with ID %d", id)
@@ -175,16 +187,21 @@ func findResourceByID(ctx context.Context, tx *Tx, id int) (*Resource, error) {
 // findResources retrieves a slice of resources from the database based on a set
 // of queryable parameters. Also returns the total number of records that meet
 // the critieria before offsets and limits are applied.
-func findResources(ctx context.Context, tx *Tx, req booking.FindResourcesRequest) ([]*Resource, int, error) {
+func findResources(
+	ctx context.Context,
+	tx *Tx,
+	req booking.FindResourcesRequest,
+	withEdges func(*ResourceQuery) *ResourceQuery,
+) ([]*Resource, int, error) {
 	query := tx.Resource.Query()
 	if req.ID != nil {
-		query = query.Where(resource.ID(*req.ID))
+		query.Where(resource.ID(*req.ID))
 	}
 	if req.Name != nil {
-		query = query.Where(resource.Name(*req.Name))
+		query.Where(resource.Name(*req.Name))
 	}
 	if req.Description != nil {
-		query = query.Where(resource.Description(*req.Description))
+		query.Where(resource.Description(*req.Description))
 	}
 	totalItems, err := query.Count(ctx)
 	if err != nil {
@@ -192,11 +209,15 @@ func findResources(ctx context.Context, tx *Tx, req booking.FindResourcesRequest
 	}
 	query = query.Offset(req.Offset)
 	if req.Limit == 0 {
-		query = query.Limit(10)
+		query.Limit(10)
 	} else {
-		query = query.Limit(req.Limit)
+		query.Limit(req.Limit)
 	}
-	r, err := query.WithSlots().All(ctx)
+	if withEdges != nil {
+		withEdges(query)
+	}
+
+	r, err := query.All(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to query resources: %w", err)
 	}
