@@ -9,7 +9,7 @@ type User struct {
 	ID int `json:"id"`
 
 	// Organization that the user belongs to.
-	OrganizationID int           `json:"organizationId"`
+	OrganizationID *int          `json:"organizationId"`
 	Organization   *Organization `json:"organization"`
 
 	// User's preferred name and email

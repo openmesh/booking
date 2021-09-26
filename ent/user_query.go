@@ -440,7 +440,10 @@ func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*User)
 		for i := range nodes {
-			fk := nodes[i].OrganizationId
+			if nodes[i].OrganizationId == nil {
+				continue
+			}
+			fk := *nodes[i].OrganizationId
 			if _, ok := nodeids[fk]; !ok {
 				ids = append(ids, fk)
 			}

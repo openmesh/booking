@@ -250,8 +250,8 @@ func (r UpdateResourceRequest) Validate() []ValidationError {
 // UpdateResourcesResponse represents a response returned by the UpdateResource
 // method of a ResourceService.
 type UpdateResourceResponse struct {
-	*Resource
-	Err error `json:"err,omitempty"`
+	*Resource `json:"resource,omitempty"`
+	Err       error `json:"err,omitempty"`
 }
 
 // Error implements the errorer interface. Returns property Err from the response.

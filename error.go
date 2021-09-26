@@ -37,6 +37,12 @@ const (
 	ERESOURCENAMECONFLICT = "resource_name_conflict"
 	ENOTIMPLEMENTED       = "not_implemented"
 	EUNAUTHORIZED         = "unauthorized"
+	// EAUTHSOURCENOTCONFIGURED indicates that an attempt was made to use an auth
+	// source that had not been set up.
+	EAUTHSOURCENOTCONFIGURED = "auth_source_not_configured"
+	EAUTHSOURCEUNSUPPORTED   = "auth_source_unsupported"
+	EAUTHNOTFOUND            = "auth_not_found"
+	EUSERNOTFOUND            = "user_not_found"
 )
 
 // Error represents an application-specific error. Application errors can be

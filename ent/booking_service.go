@@ -291,9 +291,11 @@ func createBooking(
 		return nil, fmt.Errorf("failed to create booking: %w", err)
 	}
 
-	b, err = attachEdges(b)
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach edges: %w", err)
+	if attachEdges != nil {
+		b, err = attachEdges(b)
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach edges: %w", err)
+		}
 	}
 	return b, nil
 }

@@ -16,7 +16,9 @@ func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name"),
 		field.String("email").Unique(),
-		field.Int("organizationId"),
+		field.Int("organizationId").
+			Optional().
+			Nillable(),
 	}
 }
 
@@ -27,8 +29,7 @@ func (User) Edges() []ent.Edge {
 		edge.From("organization", Organization.Type).
 			Ref("users").
 			Field("organizationId").
-			Unique().
-			Required(),
+			Unique(),
 	}
 }
 

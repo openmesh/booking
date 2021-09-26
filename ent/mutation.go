@@ -5884,7 +5884,7 @@ func (m *UserMutation) OrganizationId() (r int, exists bool) {
 // OldOrganizationId returns the old "organizationId" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldOrganizationId(ctx context.Context) (v int, err error) {
+func (m *UserMutation) OldOrganizationId(ctx context.Context) (v *int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldOrganizationId is only allowed on UpdateOne operations")
 	}
@@ -5898,9 +5898,22 @@ func (m *UserMutation) OldOrganizationId(ctx context.Context) (v int, err error)
 	return oldValue.OrganizationId, nil
 }
 
+// ClearOrganizationId clears the value of the "organizationId" field.
+func (m *UserMutation) ClearOrganizationId() {
+	m.organization = nil
+	m.clearedFields[user.FieldOrganizationId] = struct{}{}
+}
+
+// OrganizationIdCleared returns if the "organizationId" field was cleared in this mutation.
+func (m *UserMutation) OrganizationIdCleared() bool {
+	_, ok := m.clearedFields[user.FieldOrganizationId]
+	return ok
+}
+
 // ResetOrganizationId resets all changes to the "organizationId" field.
 func (m *UserMutation) ResetOrganizationId() {
 	m.organization = nil
+	delete(m.clearedFields, user.FieldOrganizationId)
 }
 
 // AddAuthIDs adds the "auths" edge to the Auth entity by ids.
@@ -5969,7 +5982,7 @@ func (m *UserMutation) ClearOrganization() {
 
 // OrganizationCleared reports if the "organization" edge to the Organization entity was cleared.
 func (m *UserMutation) OrganizationCleared() bool {
-	return m.clearedorganization
+	return m.OrganizationIdCleared() || m.clearedorganization
 }
 
 // OrganizationID returns the "organization" edge ID in the mutation.
@@ -6144,7 +6157,11 @@ func (m *UserMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *UserMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(user.FieldOrganizationId) {
+		fields = append(fields, user.FieldOrganizationId)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -6157,6 +6174,11 @@ func (m *UserMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *UserMutation) ClearField(name string) error {
+	switch name {
+	case user.FieldOrganizationId:
+		m.ClearOrganizationId()
+		return nil
+	}
 	return fmt.Errorf("unknown User nullable field %s", name)
 }
 

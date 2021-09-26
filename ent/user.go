@@ -26,7 +26,7 @@ type User struct {
 	// Email holds the value of the "email" field.
 	Email string `json:"email,omitempty"`
 	// OrganizationId holds the value of the "organizationId" field.
-	OrganizationId int `json:"organizationId,omitempty"`
+	OrganizationId *int `json:"organizationId,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges UserEdges `json:"edges"`
@@ -126,7 +126,8 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field organizationId", values[i])
 			} else if value.Valid {
-				u.OrganizationId = int(value.Int64)
+				u.OrganizationId = new(int)
+				*u.OrganizationId = int(value.Int64)
 			}
 		}
 	}
@@ -174,8 +175,10 @@ func (u *User) String() string {
 	builder.WriteString(u.Name)
 	builder.WriteString(", email=")
 	builder.WriteString(u.Email)
-	builder.WriteString(", organizationId=")
-	builder.WriteString(fmt.Sprintf("%v", u.OrganizationId))
+	if v := u.OrganizationId; v != nil {
+		builder.WriteString(", organizationId=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

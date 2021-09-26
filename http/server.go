@@ -55,6 +55,7 @@ type Server struct {
 	ResourceService       booking.ResourceService
 	UnavailabilityService booking.UnavailabilityService
 	UserService           booking.UserService
+	OAuthService          booking.OAuthService
 }
 
 // NewServer returns a new instance of Server.
@@ -113,7 +114,7 @@ func (s *Server) RegisterRoutes() {
 	{
 		r := s.router.PathPrefix("/").Subrouter()
 		r.Use(s.requireNoAuth)
-		s.registerAuthRoutes(r)
+		s.registerOAuthRoutes(r)
 		s.registerOrganizationRoutes(r)
 	}
 	// Register authenticated routes.

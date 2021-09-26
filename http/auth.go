@@ -1,151 +1,137 @@
 package http
 
-import (
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
-	"io"
-	"net/http"
-	"strconv"
+// // registerAuthRoutes is a helper function to register routes to a router.
+// func (s *Server) registerAuthRoutes(r *mux.Router) {
+// 	r.HandleFunc("/oauth/github", s.handleOAuthGitHub).Methods("GET")
+// 	r.HandleFunc("/oauth/github/callback", s.handleOAuthGitHubCallback).Methods("GET")
+// }
 
-	"github.com/google/go-github/v32/github"
-	"github.com/gorilla/mux"
-	"github.com/openmesh/booking"
-	"golang.org/x/oauth2"
-)
+// // handleOAuthGitHub handles the "GET /oauth/github" route. It generates a
+// // random state variable and redirects the user to the GitHub OAuth endpoint.
+// //
+// // After authentication, user will be redirected back to the callback page
+// // where we can store the returned OAuth tokens.
+// func (s *Server) handleOAuthGitHub(w http.ResponseWriter, r *http.Request) {
+// 	// Read session from request's cookies.
+// 	session, err := s.session(r)
+// 	if err != nil {
+// 		Error(w, r, err)
+// 		return
+// 	}
 
-// registerAuthRoutes is a helper function to register routes to a router.
-func (s *Server) registerAuthRoutes(r *mux.Router) {
-	r.HandleFunc("/oauth/github", s.handleOAuthGitHub).Methods("GET")
-	r.HandleFunc("/oauth/github/callback", s.handleOAuthGitHubCallback).Methods("GET")
-}
+// 	// Generate new OAuth state for the session to prevent CSRF attacks.
+// 	state := make([]byte, 64)
+// 	if _, err := io.ReadFull(rand.Reader, state); err != nil {
+// 		Error(w, r, err)
+// 		return
+// 	}
+// 	session.State = hex.EncodeToString(state)
 
-// handleOAuthGitHub handles the "GET /oauth/github" route. It generates a
-// random state variable and redirects the user to the GitHub OAuth endpoint.
-//
-// After authentication, user will be redirected back to the callback page
-// where we can store the returned OAuth tokens.
-func (s *Server) handleOAuthGitHub(w http.ResponseWriter, r *http.Request) {
-	// Read session from request's cookies.
-	session, err := s.session(r)
-	if err != nil {
-		Error(w, r, err)
-		return
-	}
+// 	// Store the state to the session in the response cookie.
+// 	if err := s.setSession(w, session); err != nil {
+// 		Error(w, r, err)
+// 		return
+// 	}
 
-	// Generate new OAuth state for the session to prevent CSRF attacks.
-	state := make([]byte, 64)
-	if _, err := io.ReadFull(rand.Reader, state); err != nil {
-		Error(w, r, err)
-		return
-	}
-	session.State = hex.EncodeToString(state)
+// 	// Redirect to OAuth2 provider.
+// 	http.Redirect(w, r, s.OAuth2Config().AuthCodeURL(session.State), http.StatusFound)
+// }
 
-	// Store the state to the session in the response cookie.
-	if err := s.setSession(w, session); err != nil {
-		Error(w, r, err)
-		return
-	}
+// // handleOAuthGitHubCallback handles the "GET /oauth/github/callback" route.
+// // It validates the returned OAuth state that we generated previously, looks up
+// // the current user's information, and creates an "Auth" object in the database.
+// func (s *Server) handleOAuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
+// 	// Read form variables passed in from GitHub.
+// 	state, code := r.FormValue("state"), r.FormValue("code")
 
-	// Redirect to OAuth2 provider.
-	http.Redirect(w, r, s.OAuth2Config().AuthCodeURL(session.State), http.StatusFound)
-}
+// 	// Read session from request.
+// 	session, err := s.session(r)
+// 	if err != nil {
+// 		Error(w, r, fmt.Errorf("cannot read session: %s", err))
+// 		return
+// 	}
 
-// handleOAuthGitHubCallback handles the "GET /oauth/github/callback" route.
-// It validates the returned OAuth state that we generated previously, looks up
-// the current user's information, and creates an "Auth" object in the database.
-func (s *Server) handleOAuthGitHubCallback(w http.ResponseWriter, r *http.Request) {
-	// Read form variables passed in from GitHub.
-	state, code := r.FormValue("state"), r.FormValue("code")
+// 	// Validate that state matches session state.
+// 	if state != session.State {
+// 		Error(w, r, fmt.Errorf("oauth state mismatch"))
+// 		return
+// 	}
 
-	// Read session from request.
-	session, err := s.session(r)
-	if err != nil {
-		Error(w, r, fmt.Errorf("cannot read session: %s", err))
-		return
-	}
+// 	// Exchange code for OAuth tokens.
+// 	tok, err := s.OAuth2Config().Exchange(r.Context(), code)
+// 	if err != nil {
+// 		Error(w, r, fmt.Errorf("oauth exchange error: %s", err))
+// 		return
+// 	}
 
-	// Validate that state matches session state.
-	if state != session.State {
-		Error(w, r, fmt.Errorf("oauth state mismatch"))
-		return
-	}
+// 	// Create a new GitHub API client.
+// 	client := github.NewClient(oauth2.NewClient(r.Context(), oauth2.StaticTokenSource(
+// 		&oauth2.Token{AccessToken: tok.AccessToken},
+// 	)))
 
-	// Exchange code for OAuth tokens.
-	tok, err := s.OAuth2Config().Exchange(r.Context(), code)
-	if err != nil {
-		Error(w, r, fmt.Errorf("oauth exchange error: %s", err))
-		return
-	}
+// 	// Fetch user information for the currently authenticated user.
+// 	// Require that we at least receive a user ID from GitHub.
+// 	u, _, err := client.Users.Get(r.Context(), "")
+// 	if err != nil {
+// 		Error(w, r, fmt.Errorf("cannot fetch github user: %s", err))
+// 		return
+// 	} else if u.ID == nil {
+// 		Error(w, r, fmt.Errorf("user ID not returned by GitHub, cannot authenticate user"))
+// 		return
+// 	}
 
-	// Create a new GitHub API client.
-	client := github.NewClient(oauth2.NewClient(r.Context(), oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: tok.AccessToken},
-	)))
+// 	// Email is not necessarily available for all accounts. If it is, store it
+// 	// so we can link together multiple OAuth providers in the future
+// 	// (e.g. GitHub, Google, etc).
+// 	var name string
+// 	if u.Name != nil {
+// 		name = *u.Name
+// 	} else if u.Login != nil {
+// 		name = *u.Login
+// 	}
+// 	var email string
+// 	if u.Email != nil {
+// 		email = *u.Email
+// 	}
 
-	// Fetch user information for the currently authenticated user.
-	// Require that we at least receive a user ID from GitHub.
-	u, _, err := client.Users.Get(r.Context(), "")
-	if err != nil {
-		Error(w, r, fmt.Errorf("cannot fetch github user: %s", err))
-		return
-	} else if u.ID == nil {
-		Error(w, r, fmt.Errorf("user ID not returned by GitHub, cannot authenticate user"))
-		return
-	}
+// 	// Create an authentication object with an associated user.
+// 	auth := &booking.Auth{
+// 		Source:       booking.AuthSourceGitHub,
+// 		SourceID:     strconv.FormatInt(*u.ID, 10),
+// 		AccessToken:  tok.AccessToken,
+// 		RefreshToken: tok.RefreshToken,
+// 		User: &booking.User{
+// 			Name:  name,
+// 			Email: email,
+// 		},
+// 	}
+// 	if !tok.Expiry.IsZero() {
+// 		auth.Expiry = &tok.Expiry
+// 	}
 
-	// Email is not necessarily available for all accounts. If it is, store it
-	// so we can link together multiple OAuth providers in the future
-	// (e.g. GitHub, Google, etc).
-	var name string
-	if u.Name != nil {
-		name = *u.Name
-	} else if u.Login != nil {
-		name = *u.Login
-	}
-	var email string
-	if u.Email != nil {
-		email = *u.Email
-	}
+// 	// Create the "Auth" object in the database. The AuthService will lookup
+// 	// the user by email if they already exist. Otherwise, a new user will be
+// 	// created and the user's ID will be set to auth.UserID.
+// 	if _, err := s.AuthService.CreateAuth(r.Context(), auth); err != nil {
+// 		Error(w, r, fmt.Errorf("cannot create auth: %s", err))
+// 		return
+// 	}
 
-	// Create an authentication object with an associated user.
-	auth := &booking.Auth{
-		Source:       booking.AuthSourceGitHub,
-		SourceID:     strconv.FormatInt(*u.ID, 10),
-		AccessToken:  tok.AccessToken,
-		RefreshToken: tok.RefreshToken,
-		User: &booking.User{
-			Name:  name,
-			Email: email,
-		},
-	}
-	if !tok.Expiry.IsZero() {
-		auth.Expiry = &tok.Expiry
-	}
+// 	// Restore redirect URL stored on login.
+// 	redirectURL := session.RedirectURL
 
-	// Create the "Auth" object in the database. The AuthService will lookup
-	// the user by email if they already exist. Otherwise, a new user will be
-	// created and the user's ID will be set to auth.UserID.
-	if _, err := s.AuthService.CreateAuth(r.Context(), auth); err != nil {
-		Error(w, r, fmt.Errorf("cannot create auth: %s", err))
-		return
-	}
+// 	// Update browser session to store the user's ID and clear OAuth state.
+// 	session.UserID = auth.UserID
+// 	session.RedirectURL = ""
+// 	session.State = ""
+// 	if err := s.setSession(w, session); err != nil {
+// 		Error(w, r, fmt.Errorf("cannot set session cookie: %s", err))
+// 		return
+// 	}
 
-	// Restore redirect URL stored on login.
-	redirectURL := session.RedirectURL
-
-	// Update browser session to store the user's ID and clear OAuth state.
-	session.UserID = auth.UserID
-	session.RedirectURL = ""
-	session.State = ""
-	if err := s.setSession(w, session); err != nil {
-		Error(w, r, fmt.Errorf("cannot set session cookie: %s", err))
-		return
-	}
-
-	// Redirect to stored URL or, if not available, to the home page.
-	if redirectURL == "" {
-		redirectURL = "/"
-	}
-	http.Redirect(w, r, redirectURL, http.StatusFound)
-}
+// 	// Redirect to stored URL or, if not available, to the home page.
+// 	if redirectURL == "" {
+// 		redirectURL = "/"
+// 	}
+// 	http.Redirect(w, r, redirectURL, http.StatusFound)
+// }

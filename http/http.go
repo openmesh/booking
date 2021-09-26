@@ -336,3 +336,18 @@ func containsJSONFields(t reflect.Type) bool {
 	}
 	return false
 }
+
+type contextKey int
+
+const (
+	requestContextKey = contextKey(iota + 1)
+)
+
+func newContextWithRequest(ctx context.Context, r *http.Request) context.Context {
+	return context.WithValue(ctx, requestContextKey, r)
+}
+
+func requestFromContext(ctx context.Context) *http.Request {
+	r, _ := ctx.Value(requestContextKey).(*http.Request)
+	return r
+}
