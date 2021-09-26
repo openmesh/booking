@@ -428,9 +428,12 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context) ([]*Organization, error
 		}
 		for _, n := range neighbors {
 			fk := n.OrganizationId
-			node, ok := nodeids[fk]
+			if fk == nil {
+				return nil, fmt.Errorf(`foreign-key "organizationId" is nil for node %v`, n.ID)
+			}
+			node, ok := nodeids[*fk]
 			if !ok {
-				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, fk, n.ID)
+				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, *fk, n.ID)
 			}
 			node.Edges.Users = append(node.Edges.Users, n)
 		}

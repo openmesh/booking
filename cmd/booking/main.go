@@ -17,7 +17,10 @@ import (
 	"github.com/openmesh/booking/ent/migrate"
 	"github.com/openmesh/booking/http"
 	"github.com/openmesh/booking/metrics"
+	"github.com/openmesh/booking/oauth"
 	"github.com/pelletier/go-toml"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
 
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	_ "github.com/openmesh/booking/ent/runtime"
@@ -238,6 +241,25 @@ func (m *Main) Run(ctx context.Context) (err error) {
 		unavailabilityService = logging.UnavailabilityLoggingMiddleware(logger)(unavailabilityService)
 		unavailabilityService = metrics.UnavailabilityMetricsMiddleware(requestCount, errorCount, requestDuration)(unavailabilityService)
 	}
+	var authService booking.AuthService
+	{
+		authService = ent.NewAuthService(m.Client)
+		authService = logging.AuthLoggingMiddleware(logger)(authService)
+		authService = metrics.AuthMetricsMiddleware(requestCount, errorCount, requestDuration)(authService)
+	}
+	var oauthService booking.OAuthService
+	{
+		oauthService = oauth.NewOAuthService(authService, map[string]*oauth2.Config{
+			booking.AuthSourceGitHub: {
+				ClientID:     m.Config.GitHub.ClientID,
+				ClientSecret: m.Config.GitHub.ClientSecret,
+				Endpoint:     github.Endpoint,
+				Scopes:       []string{},
+			},
+		})
+		oauthService = logging.OAuthLoggingMiddleware(logger)(oauthService)
+		oauthService = metrics.OAuthMetricsMiddleware(requestCount, errorCount, requestDuration)(oauthService)
+	}
 
 	// userService := sqlite.NewUserService(m.DB)
 
@@ -261,6 +283,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 	m.HTTPServer.OrganizationService = organizationService
 	m.HTTPServer.UnavailabilityService = unavailabilityService
 	m.HTTPServer.BookingService = bookingService
+	m.HTTPServer.OAuthService = oauthService
 	// m.HTTPServer.EventService = eventService
 	// m.HTTPServer.UserService = userService
 
@@ -291,7 +314,7 @@ func (m *Main) Run(ctx context.Context) (err error) {
 
 const (
 	// DefaultConfigPath is the default path to the application configuration.
-	DefaultConfigPath = "./booking.conf"
+	DefaultConfigPath = "~/booking.conf"
 
 	// DefaultDSN is the default datasource name.
 	DefaultDSN = "~/.booking/db"

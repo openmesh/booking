@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -54,6 +53,20 @@ func (uu *UserUpdate) SetOrganizationId(i int) *UserUpdate {
 	return uu
 }
 
+// SetNillableOrganizationId sets the "organizationId" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableOrganizationId(i *int) *UserUpdate {
+	if i != nil {
+		uu.SetOrganizationId(*i)
+	}
+	return uu
+}
+
+// ClearOrganizationId clears the value of the "organizationId" field.
+func (uu *UserUpdate) ClearOrganizationId() *UserUpdate {
+	uu.mutation.ClearOrganizationId()
+	return uu
+}
+
 // AddAuthIDs adds the "auths" edge to the Auth entity by IDs.
 func (uu *UserUpdate) AddAuthIDs(ids ...int) *UserUpdate {
 	uu.mutation.AddAuthIDs(ids...)
@@ -72,6 +85,14 @@ func (uu *UserUpdate) AddAuths(a ...*Auth) *UserUpdate {
 // SetOrganizationID sets the "organization" edge to the Organization entity by ID.
 func (uu *UserUpdate) SetOrganizationID(id int) *UserUpdate {
 	uu.mutation.SetOrganizationID(id)
+	return uu
+}
+
+// SetNillableOrganizationID sets the "organization" edge to the Organization entity by ID if the given value is not nil.
+func (uu *UserUpdate) SetNillableOrganizationID(id *int) *UserUpdate {
+	if id != nil {
+		uu = uu.SetOrganizationID(*id)
+	}
 	return uu
 }
 
@@ -120,18 +141,12 @@ func (uu *UserUpdate) Save(ctx context.Context) (int, error) {
 	)
 	uu.defaults()
 	if len(uu.hooks) == 0 {
-		if err = uu.check(); err != nil {
-			return 0, err
-		}
 		affected, err = uu.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*UserMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = uu.check(); err != nil {
-				return 0, err
 			}
 			uu.mutation = mutation
 			affected, err = uu.sqlSave(ctx)
@@ -179,14 +194,6 @@ func (uu *UserUpdate) defaults() {
 		v := user.UpdateDefaultUpdatedAt()
 		uu.mutation.SetUpdatedAt(v)
 	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (uu *UserUpdate) check() error {
-	if _, ok := uu.mutation.OrganizationID(); uu.mutation.OrganizationCleared() && !ok {
-		return errors.New("ent: clearing a required unique edge \"organization\"")
-	}
-	return nil
 }
 
 func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -360,6 +367,20 @@ func (uuo *UserUpdateOne) SetOrganizationId(i int) *UserUpdateOne {
 	return uuo
 }
 
+// SetNillableOrganizationId sets the "organizationId" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableOrganizationId(i *int) *UserUpdateOne {
+	if i != nil {
+		uuo.SetOrganizationId(*i)
+	}
+	return uuo
+}
+
+// ClearOrganizationId clears the value of the "organizationId" field.
+func (uuo *UserUpdateOne) ClearOrganizationId() *UserUpdateOne {
+	uuo.mutation.ClearOrganizationId()
+	return uuo
+}
+
 // AddAuthIDs adds the "auths" edge to the Auth entity by IDs.
 func (uuo *UserUpdateOne) AddAuthIDs(ids ...int) *UserUpdateOne {
 	uuo.mutation.AddAuthIDs(ids...)
@@ -378,6 +399,14 @@ func (uuo *UserUpdateOne) AddAuths(a ...*Auth) *UserUpdateOne {
 // SetOrganizationID sets the "organization" edge to the Organization entity by ID.
 func (uuo *UserUpdateOne) SetOrganizationID(id int) *UserUpdateOne {
 	uuo.mutation.SetOrganizationID(id)
+	return uuo
+}
+
+// SetNillableOrganizationID sets the "organization" edge to the Organization entity by ID if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableOrganizationID(id *int) *UserUpdateOne {
+	if id != nil {
+		uuo = uuo.SetOrganizationID(*id)
+	}
 	return uuo
 }
 
@@ -433,18 +462,12 @@ func (uuo *UserUpdateOne) Save(ctx context.Context) (*User, error) {
 	)
 	uuo.defaults()
 	if len(uuo.hooks) == 0 {
-		if err = uuo.check(); err != nil {
-			return nil, err
-		}
 		node, err = uuo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*UserMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = uuo.check(); err != nil {
-				return nil, err
 			}
 			uuo.mutation = mutation
 			node, err = uuo.sqlSave(ctx)
@@ -492,14 +515,6 @@ func (uuo *UserUpdateOne) defaults() {
 		v := user.UpdateDefaultUpdatedAt()
 		uuo.mutation.SetUpdatedAt(v)
 	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (uuo *UserUpdateOne) check() error {
-	if _, ok := uuo.mutation.OrganizationID(); uuo.mutation.OrganizationCleared() && !ok {
-		return errors.New("ent: clearing a required unique edge \"organization\"")
-	}
-	return nil
 }
 
 func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {

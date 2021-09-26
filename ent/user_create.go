@@ -68,6 +68,14 @@ func (uc *UserCreate) SetOrganizationId(i int) *UserCreate {
 	return uc
 }
 
+// SetNillableOrganizationId sets the "organizationId" field if the given value is not nil.
+func (uc *UserCreate) SetNillableOrganizationId(i *int) *UserCreate {
+	if i != nil {
+		uc.SetOrganizationId(*i)
+	}
+	return uc
+}
+
 // AddAuthIDs adds the "auths" edge to the Auth entity by IDs.
 func (uc *UserCreate) AddAuthIDs(ids ...int) *UserCreate {
 	uc.mutation.AddAuthIDs(ids...)
@@ -86,6 +94,14 @@ func (uc *UserCreate) AddAuths(a ...*Auth) *UserCreate {
 // SetOrganizationID sets the "organization" edge to the Organization entity by ID.
 func (uc *UserCreate) SetOrganizationID(id int) *UserCreate {
 	uc.mutation.SetOrganizationID(id)
+	return uc
+}
+
+// SetNillableOrganizationID sets the "organization" edge to the Organization entity by ID if the given value is not nil.
+func (uc *UserCreate) SetNillableOrganizationID(id *int) *UserCreate {
+	if id != nil {
+		uc = uc.SetOrganizationID(*id)
+	}
 	return uc
 }
 
@@ -189,12 +205,6 @@ func (uc *UserCreate) check() error {
 	if _, ok := uc.mutation.Email(); !ok {
 		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "email"`)}
 	}
-	if _, ok := uc.mutation.OrganizationId(); !ok {
-		return &ValidationError{Name: "organizationId", err: errors.New(`ent: missing required field "organizationId"`)}
-	}
-	if _, ok := uc.mutation.OrganizationID(); !ok {
-		return &ValidationError{Name: "organization", err: errors.New("ent: missing required edge \"organization\"")}
-	}
 	return nil
 }
 
@@ -290,7 +300,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.OrganizationId = nodes[0]
+		_node.OrganizationId = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

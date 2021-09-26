@@ -19,59 +19,67 @@ type authLoggingMiddleware struct {
 	booking.AuthService
 }
 
-func (mw authLoggingMiddleware) FindAuthByID(ctx context.Context, id int) (auth *booking.Auth, err error) {
+func (mw authLoggingMiddleware) FindAuthByID(ctx context.Context, req booking.FindAuthByIDRequest) (res booking.FindAuthByIDResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "find_auth_by_id",
-			"id", id,
-			"auth", auth,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	auth, err = mw.AuthService.FindAuthByID(ctx, id)
+	res = mw.AuthService.FindAuthByID(ctx, req)
 	return
 }
 
-func (mw authLoggingMiddleware) FindAuths(ctx context.Context, filter booking.AuthFilter) (auths []*booking.Auth, totalItems int, err error) {
+func (mw authLoggingMiddleware) FindAuths(ctx context.Context, req booking.FindAuthsRequest) (res booking.FindAuthsResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "find_auths",
-			"filter", filter,
-			"auths", auths,
-			"total_items", totalItems,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	auths, totalItems, err = mw.AuthService.FindAuths(ctx, filter)
+	res = mw.AuthService.FindAuths(ctx, req)
 	return
 }
 
-func (mw authLoggingMiddleware) CreateAuth(ctx context.Context, auth *booking.Auth) (result *booking.Auth, err error) {
+func (mw authLoggingMiddleware) CreateAuth(ctx context.Context, req booking.CreateAuthRequest) (res booking.CreateAuthResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "create_auth",
-			"auth", auth,
-			"err", err,
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
-
-	result, err = mw.AuthService.CreateAuth(ctx, auth)
+	res = mw.AuthService.CreateAuth(ctx, req)
 	return
 }
 
-func (mw authLoggingMiddleware) DeleteAuth(ctx context.Context, id int) (err error) {
+func (mw authLoggingMiddleware) UpdateAuth(ctx context.Context, req booking.UpdateAuthRequest) (res booking.UpdateAuthResponse) {
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
-			"method", "delete_auth",
-			"id", id,
-			"err", err,
+			"method", "update_auth",
+			"request", req,
+			"response", res,
 			"took", time.Since(begin),
 		)
 	}(time.Now())
+	res = mw.AuthService.UpdateAuth(ctx, req)
+	return
+}
+
+func (mw authLoggingMiddleware) DeleteAuth(ctx context.Context, req booking.DeleteAuthRequest) (res booking.DeleteAuthResponse) {
+	defer func(begin time.Time) {
+		_ = mw.logger.Log(
+			"method", "delete_auth",
+			"request", req,
+			"response", res,
+			"took", time.Since(begin),
+		)
+	}(time.Now())
+	res = mw.AuthService.DeleteAuth(ctx, req)
 	return
 }

@@ -550,6 +550,20 @@ func OrganizationIdNotIn(vs ...int) predicate.User {
 	})
 }
 
+// OrganizationIdIsNil applies the IsNil predicate on the "organizationId" field.
+func OrganizationIdIsNil() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldOrganizationId)))
+	})
+}
+
+// OrganizationIdNotNil applies the NotNil predicate on the "organizationId" field.
+func OrganizationIdNotNil() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldOrganizationId)))
+	})
+}
+
 // HasAuths applies the HasEdge predicate on the "auths" edge.
 func HasAuths() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
