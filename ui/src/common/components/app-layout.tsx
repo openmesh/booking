@@ -3,8 +3,9 @@ import {
   PieChartOutlined,
   SettingOutlined,
   TagOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Space, Avatar, Input } from 'antd';
 import { SelectInfo } from 'rc-menu/lib/interface';
 import React from 'react';
 import { useHistory, useLocation } from 'react-router';
@@ -41,9 +42,19 @@ export function AppLayout({ children }: { children: JSX.Element }) {
           </Menu.Item>
         </Menu>
       </Layout.Sider>
-      <Layout className="bg-gray-100">
-        <Layout.Header className="bg-gray-100" />
-        <Layout.Content className="p-8">{children}</Layout.Content>
+      <Layout className="bg-gray-100 p-8">
+        <Layout.Header className="bg-gray-100 px-0 flex justify-between items-center">
+          <Input.Search
+            placeholder="input search text"
+            allowClear
+            enterButton="Search"
+            className="max-w-md"
+          />
+          <Space>
+            <Avatar icon={<UserOutlined />} />
+          </Space>
+        </Layout.Header>
+        <Layout.Content className="py-8">{children}</Layout.Content>
         <Layout.Footer className="text-center">
           Booking by OpenMesh ©2021 Created by Jack Caldwell
         </Layout.Footer>

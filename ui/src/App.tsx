@@ -9,16 +9,18 @@ import { AppLayout } from './common/components/app-layout';
 function App() {
   return (
     <BrowserRouter>
-      <Route path="/" exact>
-        <Signin />
-      </Route>
-      <AppLayout>
-        <Switch>
-          <Route path="/dashboard">
-            <Dashboard />
-          </Route>
-        </Switch>
-      </AppLayout>
+      <Switch>
+        <Route path="/" exact>
+          <Signin />
+        </Route>
+        <AppLayout>
+          <Switch>
+            <Route path="/dashboard">
+              <Dashboard />
+            </Route>
+          </Switch>
+        </AppLayout>
+      </Switch>
     </BrowserRouter>
   );
 }
