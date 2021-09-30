@@ -92,6 +92,7 @@ func NewServer() *Server {
 	spaRoutes := []string{
 		"/",
 		"/signup",
+		"/dashboard",
 	}
 
 	for _, route := range spaRoutes {

@@ -10,6 +10,7 @@ export function Dashboard() {
     // height: 400,
     xField: 'date',
     yField: 'value',
+    seriesField: 'type',
     xAxis: {
       alias: 'Date',
     },
@@ -30,7 +31,7 @@ export function Dashboard() {
     // },
     tooltip: {
       showMarkers: false,
-      title: data => data + 'wowow',
+      title: data => format(new Date(data), 'EEE dd'),
       formatter: data => {
         console.log(data);
         return { name: 'test', value: 'thing' };
@@ -72,37 +73,62 @@ export function Dashboard() {
 
 const recentBookingsData = [
   {
-    date: format(new Date(2021, 9, 21), 'EEE dd'),
+    date: new Date(2021, 9, 21).toUTCString(),
     value: 40,
-    quantity: 3,
+    type: 'value',
   },
   {
-    date: format(new Date(2021, 9, 22), 'EEE dd'),
+    date: new Date(2021, 9, 21).toUTCString(),
+    value: 3,
+    type: 'quantity',
+  },
+  {
+    date: new Date(2021, 9, 22).toUTCString(),
     value: 12,
-    quantity: 1,
+    type: 'value',
   },
   {
-    date: format(new Date(2021, 9, 23), 'EEE dd'),
+    date: new Date(2021, 9, 22).toUTCString(),
+    value: 7,
+    type: 'quantity',
+  },
+  {
+    date: new Date(2021, 9, 23).toUTCString(),
     value: 38,
-    quantity: 6,
+    type: 'value',
   },
   {
-    date: format(new Date(2021, 9, 24), 'EEE dd'),
+    date: new Date(2021, 9, 23).toUTCString(),
+    value: 6,
+    type: 'quantity',
+  },
+  {
+    date: new Date(2021, 9, 24).toUTCString(),
     value: 96,
-    quantity: 9,
+    type: 'value',
   },
   {
-    date: format(new Date(2021, 9, 25), 'EEE dd'),
+    date: new Date(2021, 9, 24).toUTCString(),
+    value: 9,
+    type: 'quantity',
+  },
+  {
+    date: new Date(2021, 9, 25).toUTCString(),
     value: 68,
     quantity: 4,
   },
   {
-    date: format(new Date(2021, 9, 26), 'EEE dd'),
+    date: new Date(2021, 9, 25).toUTCString(),
+    value: 68,
+    quantity: 4,
+  },
+  {
+    date: new Date(2021, 9, 26).toUTCString(),
     value: 73,
     quantity: 2,
   },
   {
-    date: format(new Date(2021, 9, 27), 'EEE dd'),
+    date: new Date(2021, 9, 27).toUTCString(),
     value: 59,
     quantity: 7,
   },
