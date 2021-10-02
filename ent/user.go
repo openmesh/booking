@@ -36,11 +36,13 @@ type User struct {
 type UserEdges struct {
 	// Auths holds the value of the auths edge.
 	Auths []*Auth `json:"auths,omitempty"`
+	// Tokens holds the value of the tokens edge.
+	Tokens []*Token `json:"tokens,omitempty"`
 	// Organization holds the value of the organization edge.
 	Organization *Organization `json:"organization,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // AuthsOrErr returns the Auths value or an error if the edge
@@ -52,10 +54,19 @@ func (e UserEdges) AuthsOrErr() ([]*Auth, error) {
 	return nil, &NotLoadedError{edge: "auths"}
 }
 
+// TokensOrErr returns the Tokens value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) TokensOrErr() ([]*Token, error) {
+	if e.loadedTypes[1] {
+		return e.Tokens, nil
+	}
+	return nil, &NotLoadedError{edge: "tokens"}
+}
+
 // OrganizationOrErr returns the Organization value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e UserEdges) OrganizationOrErr() (*Organization, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		if e.Organization == nil {
 			// The edge organization was loaded in eager-loading,
 			// but was not found.
@@ -137,6 +148,11 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 // QueryAuths queries the "auths" edge of the User entity.
 func (u *User) QueryAuths() *AuthQuery {
 	return (&UserClient{config: u.config}).QueryAuths(u)
+}
+
+// QueryTokens queries the "tokens" edge of the User entity.
+func (u *User) QueryTokens() *TokenQuery {
+	return (&UserClient{config: u.config}).QueryTokens(u)
 }
 
 // QueryOrganization queries the "organization" edge of the User entity.

@@ -12,12 +12,15 @@ import (
 	"strings"
 
 	"github.com/go-kit/kit/log"
+	goredis "github.com/go-redis/redis/v8"
 	"github.com/openmesh/booking"
+	"github.com/openmesh/booking/cache"
 	"github.com/openmesh/booking/ent"
 	"github.com/openmesh/booking/ent/migrate"
 	"github.com/openmesh/booking/http"
 	"github.com/openmesh/booking/metrics"
 	"github.com/openmesh/booking/oauth"
+	"github.com/openmesh/booking/redis"
 	"github.com/pelletier/go-toml"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
@@ -214,11 +217,18 @@ func (m *Main) Run(ctx context.Context) (err error) {
 		Help:      "Total duration of requests in microseconds",
 	}, fieldKeys)
 
+	redisCache := redis.NewRedisCache(&goredis.Options{
+		Addr:     m.Config.Redis.Addr,
+		Password: m.Config.Redis.Password,
+		DB:       m.Config.Redis.DB,
+	})
+
 	// Instantiate ent-backed services.
 	// authService := ent.NewAuthService(m.Client)
 	var resourceService booking.ResourceService
 	{
 		resourceService = ent.NewResourceService(m.Client)
+		resourceService = cache.ResourceCacheMiddleware(redisCache)(resourceService)
 		resourceService = booking.ResourceValidationMiddleware()(resourceService)
 		resourceService = logging.ResourceLoggingMiddleware(logger)(resourceService)
 		resourceService = metrics.ResourceMetricsMiddleware(requestCount, errorCount, requestDuration)(resourceService)
@@ -241,12 +251,20 @@ func (m *Main) Run(ctx context.Context) (err error) {
 		unavailabilityService = logging.UnavailabilityLoggingMiddleware(logger)(unavailabilityService)
 		unavailabilityService = metrics.UnavailabilityMetricsMiddleware(requestCount, errorCount, requestDuration)(unavailabilityService)
 	}
+	var userService booking.UserService
+	{
+		userService = ent.NewUserService(m.Client)
+	}
 	var authService booking.AuthService
 	{
 		authService = ent.NewAuthService(m.Client)
 		authService = logging.AuthLoggingMiddleware(logger)(authService)
 		authService = metrics.AuthMetricsMiddleware(requestCount, errorCount, requestDuration)(authService)
 	}
+	// var tokenService booking.TokenService
+	// {
+
+	// }
 	var oauthService booking.OAuthService
 	{
 		oauthService = oauth.NewOAuthService(authService, map[string]*oauth2.Config{
@@ -279,11 +297,12 @@ func (m *Main) Run(ctx context.Context) (err error) {
 
 	// Attach underlying services to the HTTP server.
 	// m.HTTPServer.AuthService = authService
-	m.HTTPServer.ResourceService = resourceService
-	m.HTTPServer.OrganizationService = organizationService
-	m.HTTPServer.UnavailabilityService = unavailabilityService
 	m.HTTPServer.BookingService = bookingService
 	m.HTTPServer.OAuthService = oauthService
+	m.HTTPServer.OrganizationService = organizationService
+	m.HTTPServer.ResourceService = resourceService
+	m.HTTPServer.UnavailabilityService = unavailabilityService
+	m.HTTPServer.UserService = userService
 	// m.HTTPServer.EventService = eventService
 	// m.HTTPServer.UserService = userService
 
@@ -345,6 +364,12 @@ type Config struct {
 	Rollbar struct {
 		Token string `toml:"token"`
 	} `toml:"rollbar"`
+
+	Redis struct {
+		Addr     string `toml:"addr"`
+		Password string `toml:"password"`
+		DB       int    `toml:"db"`
+	}
 }
 
 // DefaultConfig returns a new instance of Config with defaults set.

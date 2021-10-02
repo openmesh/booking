@@ -669,6 +669,34 @@ func HasResourcesWith(preds ...predicate.Resource) predicate.Organization {
 	})
 }
 
+// HasTokens applies the HasEdge predicate on the "tokens" edge.
+func HasTokens() predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(TokensTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, TokensTable, TokensColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTokensWith applies the HasEdge predicate on the "tokens" edge with a given conditions (other predicates).
+func HasTokensWith(preds ...predicate.Token) predicate.Organization {
+	return predicate.Organization(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(TokensInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, TokensTable, TokensColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Organization) predicate.Organization {
 	return predicate.Organization(func(s *sql.Selector) {

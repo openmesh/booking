@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -23,9 +24,9 @@ func (mw resourceLoggingMiddleware) FindResourceByID(ctx context.Context, req bo
 	defer func(begin time.Time) {
 		_ = mw.logger.Log(
 			"method", "find_resource_by_id",
-			"request", req,
-			"resource", res.Resource,
-			"err", res.Err,
+			"request", fmt.Sprintf("%+v", req),
+			"response", fmt.Sprintf("%+v", res),
+			"took", time.Since(begin),
 		)
 	}(time.Now())
 	res = mw.ResourceService.FindResourceByID(ctx, req)
@@ -37,9 +38,8 @@ func (mw resourceLoggingMiddleware) FindResources(ctx context.Context, req booki
 		_ = mw.logger.Log(
 			"method", "find_resources",
 			"request", req,
-			"resources", res.Resources,
-			"total_items", res.TotalItems,
-			"err", res.Err,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
 	res = mw.ResourceService.FindResources(ctx, req)
@@ -51,8 +51,8 @@ func (mw resourceLoggingMiddleware) CreateResource(ctx context.Context, req book
 		_ = mw.logger.Log(
 			"method", "create_resource",
 			"request", req,
-			"resource", res.Resource,
-			"err", res.Err,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
 	res = mw.ResourceService.CreateResource(ctx, req)
@@ -64,8 +64,8 @@ func (mw resourceLoggingMiddleware) UpdateResource(ctx context.Context, req book
 		_ = mw.logger.Log(
 			"method", "update_resource",
 			"request", req,
-			"resource", res.Resource,
-			"err", res.Err,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
 	res = mw.ResourceService.UpdateResource(ctx, req)
@@ -77,7 +77,8 @@ func (mw resourceLoggingMiddleware) DeleteResource(ctx context.Context, req book
 		_ = mw.logger.Log(
 			"method", "delete_resource",
 			"request", req,
-			"err", res.Err,
+			"response", res,
+			"took", time.Since(begin),
 		)
 	}(time.Now())
 	res = mw.ResourceService.DeleteResource(ctx, req)

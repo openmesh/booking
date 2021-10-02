@@ -31,6 +31,7 @@ type hooks struct {
 	OrganizationOwnership []ent.Hook
 	Resource              []ent.Hook
 	Slot                  []ent.Hook
+	Token                 []ent.Hook
 	Unavailability        []ent.Hook
 	User                  []ent.Hook
 }

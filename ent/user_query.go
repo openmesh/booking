@@ -15,6 +15,7 @@ import (
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/user"
 )
 
@@ -29,6 +30,7 @@ type UserQuery struct {
 	predicates []predicate.User
 	// eager-loading edges.
 	withAuths        *AuthQuery
+	withTokens       *TokenQuery
 	withOrganization *OrganizationQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -81,6 +83,28 @@ func (uq *UserQuery) QueryAuths() *AuthQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(auth.Table, auth.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.AuthsTable, user.AuthsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTokens chains the current query on the "tokens" edge.
+func (uq *UserQuery) QueryTokens() *TokenQuery {
+	query := &TokenQuery{config: uq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(token.Table, token.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.TokensTable, user.TokensColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
 		return fromU, nil
@@ -292,6 +316,7 @@ func (uq *UserQuery) Clone() *UserQuery {
 		order:            append([]OrderFunc{}, uq.order...),
 		predicates:       append([]predicate.User{}, uq.predicates...),
 		withAuths:        uq.withAuths.Clone(),
+		withTokens:       uq.withTokens.Clone(),
 		withOrganization: uq.withOrganization.Clone(),
 		// clone intermediate query.
 		sql:  uq.sql.Clone(),
@@ -307,6 +332,17 @@ func (uq *UserQuery) WithAuths(opts ...func(*AuthQuery)) *UserQuery {
 		opt(query)
 	}
 	uq.withAuths = query
+	return uq
+}
+
+// WithTokens tells the query-builder to eager-load the nodes that are connected to
+// the "tokens" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithTokens(opts ...func(*TokenQuery)) *UserQuery {
+	query := &TokenQuery{config: uq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withTokens = query
 	return uq
 }
 
@@ -386,8 +422,9 @@ func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 	var (
 		nodes       = []*User{}
 		_spec       = uq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			uq.withAuths != nil,
+			uq.withTokens != nil,
 			uq.withOrganization != nil,
 		}
 	)
@@ -433,6 +470,31 @@ func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 				return nil, fmt.Errorf(`unexpected foreign-key "userId" returned %v for node %v`, fk, n.ID)
 			}
 			node.Edges.Auths = append(node.Edges.Auths, n)
+		}
+	}
+
+	if query := uq.withTokens; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*User)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Tokens = []*Token{}
+		}
+		query.Where(predicate.Token(func(s *sql.Selector) {
+			s.Where(sql.InValues(user.TokensColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.UserId
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "userId" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.Tokens = append(node.Edges.Tokens, n)
 		}
 	}
 

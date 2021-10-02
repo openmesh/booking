@@ -15,6 +15,7 @@ import (
 	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/slot"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 )
@@ -44,6 +45,7 @@ func columnChecker(table string) func(string) error {
 		organizationownership.Table: organizationownership.ValidColumn,
 		resource.Table:              resource.ValidColumn,
 		slot.Table:                  slot.ValidColumn,
+		token.Table:                 token.ValidColumn,
 		unavailability.Table:        unavailability.ValidColumn,
 		user.Table:                  user.ValidColumn,
 	}

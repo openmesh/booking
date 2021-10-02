@@ -26,6 +26,8 @@ type Tx struct {
 	Resource *ResourceClient
 	// Slot is the client for interacting with the Slot builders.
 	Slot *SlotClient
+	// Token is the client for interacting with the Token builders.
+	Token *TokenClient
 	// Unavailability is the client for interacting with the Unavailability builders.
 	Unavailability *UnavailabilityClient
 	// User is the client for interacting with the User builders.
@@ -172,6 +174,7 @@ func (tx *Tx) init() {
 	tx.OrganizationOwnership = NewOrganizationOwnershipClient(tx.config)
 	tx.Resource = NewResourceClient(tx.config)
 	tx.Slot = NewSlotClient(tx.config)
+	tx.Token = NewTokenClient(tx.config)
 	tx.Unavailability = NewUnavailabilityClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }

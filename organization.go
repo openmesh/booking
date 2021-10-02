@@ -15,9 +15,6 @@ type Organization struct {
 	// applications.
 	PublicKey string `json:"publicKey"`
 
-	// A private key used to identify the organization from server applicationvs.
-	PrivateKey string `json:"privateKey"`
-
 	// Owner of the organization. This is the user that created the organization
 	// by default. However ownership can be transferred to other members of the
 	// organization.

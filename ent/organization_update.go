@@ -13,6 +13,7 @@ import (
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/user"
 )
 
@@ -83,6 +84,21 @@ func (ou *OrganizationUpdate) AddResources(r ...*Resource) *OrganizationUpdate {
 	return ou.AddResourceIDs(ids...)
 }
 
+// AddTokenIDs adds the "tokens" edge to the Token entity by IDs.
+func (ou *OrganizationUpdate) AddTokenIDs(ids ...string) *OrganizationUpdate {
+	ou.mutation.AddTokenIDs(ids...)
+	return ou
+}
+
+// AddTokens adds the "tokens" edges to the Token entity.
+func (ou *OrganizationUpdate) AddTokens(t ...*Token) *OrganizationUpdate {
+	ids := make([]string, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return ou.AddTokenIDs(ids...)
+}
+
 // Mutation returns the OrganizationMutation object of the builder.
 func (ou *OrganizationUpdate) Mutation() *OrganizationMutation {
 	return ou.mutation
@@ -128,6 +144,27 @@ func (ou *OrganizationUpdate) RemoveResources(r ...*Resource) *OrganizationUpdat
 		ids[i] = r[i].ID
 	}
 	return ou.RemoveResourceIDs(ids...)
+}
+
+// ClearTokens clears all "tokens" edges to the Token entity.
+func (ou *OrganizationUpdate) ClearTokens() *OrganizationUpdate {
+	ou.mutation.ClearTokens()
+	return ou
+}
+
+// RemoveTokenIDs removes the "tokens" edge to Token entities by IDs.
+func (ou *OrganizationUpdate) RemoveTokenIDs(ids ...string) *OrganizationUpdate {
+	ou.mutation.RemoveTokenIDs(ids...)
+	return ou
+}
+
+// RemoveTokens removes "tokens" edges to Token entities.
+func (ou *OrganizationUpdate) RemoveTokens(t ...*Token) *OrganizationUpdate {
+	ids := make([]string, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return ou.RemoveTokenIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -347,6 +384,60 @@ func (ou *OrganizationUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if ou.mutation.TokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.TokensTable,
+			Columns: []string{organization.TokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: token.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ou.mutation.RemovedTokensIDs(); len(nodes) > 0 && !ou.mutation.TokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.TokensTable,
+			Columns: []string{organization.TokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: token.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ou.mutation.TokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.TokensTable,
+			Columns: []string{organization.TokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: token.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, ou.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{organization.Label}
@@ -420,6 +511,21 @@ func (ouo *OrganizationUpdateOne) AddResources(r ...*Resource) *OrganizationUpda
 	return ouo.AddResourceIDs(ids...)
 }
 
+// AddTokenIDs adds the "tokens" edge to the Token entity by IDs.
+func (ouo *OrganizationUpdateOne) AddTokenIDs(ids ...string) *OrganizationUpdateOne {
+	ouo.mutation.AddTokenIDs(ids...)
+	return ouo
+}
+
+// AddTokens adds the "tokens" edges to the Token entity.
+func (ouo *OrganizationUpdateOne) AddTokens(t ...*Token) *OrganizationUpdateOne {
+	ids := make([]string, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return ouo.AddTokenIDs(ids...)
+}
+
 // Mutation returns the OrganizationMutation object of the builder.
 func (ouo *OrganizationUpdateOne) Mutation() *OrganizationMutation {
 	return ouo.mutation
@@ -465,6 +571,27 @@ func (ouo *OrganizationUpdateOne) RemoveResources(r ...*Resource) *OrganizationU
 		ids[i] = r[i].ID
 	}
 	return ouo.RemoveResourceIDs(ids...)
+}
+
+// ClearTokens clears all "tokens" edges to the Token entity.
+func (ouo *OrganizationUpdateOne) ClearTokens() *OrganizationUpdateOne {
+	ouo.mutation.ClearTokens()
+	return ouo
+}
+
+// RemoveTokenIDs removes the "tokens" edge to Token entities by IDs.
+func (ouo *OrganizationUpdateOne) RemoveTokenIDs(ids ...string) *OrganizationUpdateOne {
+	ouo.mutation.RemoveTokenIDs(ids...)
+	return ouo
+}
+
+// RemoveTokens removes "tokens" edges to Token entities.
+func (ouo *OrganizationUpdateOne) RemoveTokens(t ...*Token) *OrganizationUpdateOne {
+	ids := make([]string, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return ouo.RemoveTokenIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -700,6 +827,60 @@ func (ouo *OrganizationUpdateOne) sqlSave(ctx context.Context) (_node *Organizat
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: resource.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if ouo.mutation.TokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.TokensTable,
+			Columns: []string{organization.TokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: token.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ouo.mutation.RemovedTokensIDs(); len(nodes) > 0 && !ouo.mutation.TokensCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.TokensTable,
+			Columns: []string{organization.TokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: token.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ouo.mutation.TokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.TokensTable,
+			Columns: []string{organization.TokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: token.FieldID,
 				},
 			},
 		}

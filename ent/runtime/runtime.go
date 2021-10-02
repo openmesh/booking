@@ -13,6 +13,7 @@ import (
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/schema"
 	"github.com/openmesh/booking/ent/slot"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 
@@ -120,6 +121,34 @@ func init() {
 			return next.Mutate(ctx, m)
 		})
 	}
+	tokenMixin := schema.Token{}.Mixin()
+	token.Policy = privacy.NewPolicies(schema.Token{})
+	token.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := token.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	tokenMixinFields0 := tokenMixin[0].Fields()
+	_ = tokenMixinFields0
+	tokenFields := schema.Token{}.Fields()
+	_ = tokenFields
+	// tokenDescCreatedAt is the schema descriptor for createdAt field.
+	tokenDescCreatedAt := tokenMixinFields0[0].Descriptor()
+	// token.DefaultCreatedAt holds the default value on creation for the createdAt field.
+	token.DefaultCreatedAt = tokenDescCreatedAt.Default.(func() time.Time)
+	// tokenDescUpdatedAt is the schema descriptor for updatedAt field.
+	tokenDescUpdatedAt := tokenMixinFields0[1].Descriptor()
+	// token.DefaultUpdatedAt holds the default value on creation for the updatedAt field.
+	token.DefaultUpdatedAt = tokenDescUpdatedAt.Default.(func() time.Time)
+	// token.UpdateDefaultUpdatedAt holds the default value on update for the updatedAt field.
+	token.UpdateDefaultUpdatedAt = tokenDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// tokenDescID is the schema descriptor for id field.
+	tokenDescID := tokenFields[0].Descriptor()
+	// token.DefaultID holds the default value on creation for the id field.
+	token.DefaultID = tokenDescID.Default.(string)
 	unavailabilityMixin := schema.Unavailability{}.Mixin()
 	unavailability.Policy = privacy.NewPolicies(schema.Unavailability{})
 	unavailability.Hooks[0] = func(next ent.Mutator) ent.Mutator {

@@ -15,6 +15,7 @@ import (
 	"github.com/openmesh/booking/ent/organization"
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/user"
 )
 
@@ -30,6 +31,7 @@ type OrganizationQuery struct {
 	// eager-loading edges.
 	withUsers     *UserQuery
 	withResources *ResourceQuery
+	withTokens    *TokenQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -103,6 +105,28 @@ func (oq *OrganizationQuery) QueryResources() *ResourceQuery {
 			sqlgraph.From(organization.Table, organization.FieldID, selector),
 			sqlgraph.To(resource.Table, resource.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, organization.ResourcesTable, organization.ResourcesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTokens chains the current query on the "tokens" edge.
+func (oq *OrganizationQuery) QueryTokens() *TokenQuery {
+	query := &TokenQuery{config: oq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := oq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := oq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, selector),
+			sqlgraph.To(token.Table, token.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.TokensTable, organization.TokensColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
 		return fromU, nil
@@ -293,6 +317,7 @@ func (oq *OrganizationQuery) Clone() *OrganizationQuery {
 		predicates:    append([]predicate.Organization{}, oq.predicates...),
 		withUsers:     oq.withUsers.Clone(),
 		withResources: oq.withResources.Clone(),
+		withTokens:    oq.withTokens.Clone(),
 		// clone intermediate query.
 		sql:  oq.sql.Clone(),
 		path: oq.path,
@@ -318,6 +343,17 @@ func (oq *OrganizationQuery) WithResources(opts ...func(*ResourceQuery)) *Organi
 		opt(query)
 	}
 	oq.withResources = query
+	return oq
+}
+
+// WithTokens tells the query-builder to eager-load the nodes that are connected to
+// the "tokens" edge. The optional arguments are used to configure the query builder of the edge.
+func (oq *OrganizationQuery) WithTokens(opts ...func(*TokenQuery)) *OrganizationQuery {
+	query := &TokenQuery{config: oq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	oq.withTokens = query
 	return oq
 }
 
@@ -386,9 +422,10 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context) ([]*Organization, error
 	var (
 		nodes       = []*Organization{}
 		_spec       = oq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			oq.withUsers != nil,
 			oq.withResources != nil,
+			oq.withTokens != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -461,6 +498,31 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context) ([]*Organization, error
 				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, fk, n.ID)
 			}
 			node.Edges.Resources = append(node.Edges.Resources, n)
+		}
+	}
+
+	if query := oq.withTokens; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Organization)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Tokens = []*Token{}
+		}
+		query.Where(predicate.Token(func(s *sql.Selector) {
+			s.Where(sql.InValues(organization.TokensColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.OrganizationId
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "organizationId" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.Tokens = append(node.Edges.Tokens, n)
 		}
 	}
 

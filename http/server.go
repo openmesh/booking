@@ -51,11 +51,13 @@ type Server struct {
 	AvailabilityService   booking.AvailabilityService
 	BookingService        booking.BookingService
 	EventService          booking.EventService
+	OAuthService          booking.OAuthService
 	OrganizationService   booking.OrganizationService
+	ReportService         booking.ReportService
 	ResourceService       booking.ResourceService
+	TokenService          booking.TokenService
 	UnavailabilityService booking.UnavailabilityService
 	UserService           booking.UserService
-	OAuthService          booking.OAuthService
 }
 
 // NewServer returns a new instance of Server.
@@ -88,17 +90,6 @@ func NewServer() *Server {
 	// Handle embedded asset serving. This serves files embedded from http/assets.
 	fs := http.FileServer(http.Dir("./http/assets"))
 	s.router.PathPrefix("/static/").Handler(fs)
-
-	spaRoutes := []string{
-		"/",
-		"/signup",
-		"/dashboard",
-	}
-
-	for _, route := range spaRoutes {
-		router.HandleFunc(route, s.handleSpaRoute).Methods("GET")
-	}
-
 	router.HandleFunc("/manifest", s.handleManifest).Methods("GET")
 
 	// router.Use(trackMetrics)
@@ -110,6 +101,14 @@ func NewServer() *Server {
 }
 
 func (s *Server) RegisterRoutes() {
+	authSpaRoutes := []string{
+		"/signup",
+		"/dashboard",
+	}
+
+	noAuthSpaRoutes := []string{
+		"/",
+	}
 	s.router.Use(s.authenticate)
 	// Register unauthenticated routes.
 	{
@@ -117,6 +116,9 @@ func (s *Server) RegisterRoutes() {
 		r.Use(s.requireNoAuth)
 		s.registerOAuthRoutes(r)
 		s.registerOrganizationRoutes(r)
+		for _, route := range noAuthSpaRoutes {
+			r.HandleFunc(route, s.handleSpaRoute).Methods("GET")
+		}
 	}
 	// Register authenticated routes.
 	{
@@ -125,9 +127,10 @@ func (s *Server) RegisterRoutes() {
 		s.registerResourceRoutes(r)
 		s.registerBookingRoutes(r)
 		s.registerUnavailabilityRoutes(r)
-		// s.registerDialRoutes(r)
-		// s.registerDialMembershipRoutes(r)
-		// s.registerEventRoutes(r)
+		s.registerTokenRoutes(r)
+		for _, route := range authSpaRoutes {
+			r.HandleFunc(route, s.handleSpaRoute).Methods("GET")
+		}
 	}
 }
 
@@ -301,20 +304,18 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		// Error(w, r, booking.Errorf(booking.EUNAUTHORIZED, "No API key present."))
-		// return
+		// Read session from secure cookie.
+		session, _ := s.session(r)
 
-		// // Read session from secure cookie.
-		// session, _ := s.session(r)
-
-		// // Read user, if available. Ignore if fetching assets.
-		// if session.UserID != 0 {
-		// 	if user, err := s.UserService.FindUserByID(r.Context(), session.UserID); err != nil {
-		// 		s.logger.Log("cannot find session user: id=%d err=%s", session.UserID, err)
-		// 	} else {
-		// 		r = r.WithContext(booking.NewContextWithUser(r.Context(), user))
-		// 	}
-		// }
+		// Read user, if available. Ignore if fetching assets.
+		if session.UserID != 0 {
+			if user, err := s.UserService.FindUserByID(r.Context(), session.UserID); err != nil {
+				s.logger.Log("cannot find session user: id=%d err=%s", session.UserID, err)
+			} else {
+				r = r.WithContext(booking.NewContextWithUser(r.Context(), user))
+				r = r.WithContext(booking.NewContextWithOrganization(r.Context(), user.Organization))
+			}
+		}
 
 		next.ServeHTTP(w, r)
 	})
@@ -326,7 +327,7 @@ func (s *Server) requireNoAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// If user is logged in, redirect to the home page.
 		if userID := booking.UserIDFromContext(r.Context()); userID != 0 {
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, "/dashboard", http.StatusFound)
 			return
 		}
 
@@ -360,7 +361,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		if err := s.setSession(w, session); err != nil {
 			s.logger.Log("http: cannot set session: %s", err)
 		}
-		http.Redirect(w, r, "/login", http.StatusFound)
+		http.Redirect(w, r, "/", http.StatusFound)
 	})
 }
 

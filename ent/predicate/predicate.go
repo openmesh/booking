@@ -27,6 +27,9 @@ type Resource func(*sql.Selector)
 // Slot is the predicate function for slot builders.
 type Slot func(*sql.Selector)
 
+// Token is the predicate function for token builders.
+type Token func(*sql.Selector)
+
 // Unavailability is the predicate function for unavailability builders.
 type Unavailability func(*sql.Selector)
 

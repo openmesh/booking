@@ -25,6 +25,8 @@ const (
 	EdgeUsers = "users"
 	// EdgeResources holds the string denoting the resources edge name in mutations.
 	EdgeResources = "resources"
+	// EdgeTokens holds the string denoting the tokens edge name in mutations.
+	EdgeTokens = "tokens"
 	// Table holds the table name of the organization in the database.
 	Table = "organizations"
 	// UsersTable is the table that holds the users relation/edge.
@@ -41,6 +43,13 @@ const (
 	ResourcesInverseTable = "resources"
 	// ResourcesColumn is the table column denoting the resources relation/edge.
 	ResourcesColumn = "organization_id"
+	// TokensTable is the table that holds the tokens relation/edge.
+	TokensTable = "tokens"
+	// TokensInverseTable is the table name for the Token entity.
+	// It exists in this package in order to avoid circular dependency with the "token" package.
+	TokensInverseTable = "tokens"
+	// TokensColumn is the table column denoting the tokens relation/edge.
+	TokensColumn = "organization_id"
 )
 
 // Columns holds all SQL columns for organization fields.

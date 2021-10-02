@@ -26,6 +26,7 @@ func (User) Fields() []ent.Field {
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("auths", Auth.Type),
+		edge.To("tokens", Token.Type),
 		edge.From("organization", Organization.Type).
 			Ref("users").
 			Field("organizationId").

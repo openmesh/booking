@@ -16,6 +16,7 @@ import (
 	"github.com/openmesh/booking/ent/organizationownership"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/slot"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 
@@ -43,6 +44,8 @@ type Client struct {
 	Resource *ResourceClient
 	// Slot is the client for interacting with the Slot builders.
 	Slot *SlotClient
+	// Token is the client for interacting with the Token builders.
+	Token *TokenClient
 	// Unavailability is the client for interacting with the Unavailability builders.
 	Unavailability *UnavailabilityClient
 	// User is the client for interacting with the User builders.
@@ -67,6 +70,7 @@ func (c *Client) init() {
 	c.OrganizationOwnership = NewOrganizationOwnershipClient(c.config)
 	c.Resource = NewResourceClient(c.config)
 	c.Slot = NewSlotClient(c.config)
+	c.Token = NewTokenClient(c.config)
 	c.Unavailability = NewUnavailabilityClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -109,6 +113,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		OrganizationOwnership: NewOrganizationOwnershipClient(cfg),
 		Resource:              NewResourceClient(cfg),
 		Slot:                  NewSlotClient(cfg),
+		Token:                 NewTokenClient(cfg),
 		Unavailability:        NewUnavailabilityClient(cfg),
 		User:                  NewUserClient(cfg),
 	}, nil
@@ -136,6 +141,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		OrganizationOwnership: NewOrganizationOwnershipClient(cfg),
 		Resource:              NewResourceClient(cfg),
 		Slot:                  NewSlotClient(cfg),
+		Token:                 NewTokenClient(cfg),
 		Unavailability:        NewUnavailabilityClient(cfg),
 		User:                  NewUserClient(cfg),
 	}, nil
@@ -174,6 +180,7 @@ func (c *Client) Use(hooks ...Hook) {
 	c.OrganizationOwnership.Use(hooks...)
 	c.Resource.Use(hooks...)
 	c.Slot.Use(hooks...)
+	c.Token.Use(hooks...)
 	c.Unavailability.Use(hooks...)
 	c.User.Use(hooks...)
 }
@@ -631,6 +638,22 @@ func (c *OrganizationClient) QueryResources(o *Organization) *ResourceQuery {
 	return query
 }
 
+// QueryTokens queries the tokens edge of a Organization.
+func (c *OrganizationClient) QueryTokens(o *Organization) *TokenQuery {
+	query := &TokenQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := o.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, id),
+			sqlgraph.To(token.Table, token.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.TokensTable, organization.TokensColumn),
+		)
+		fromV = sqlgraph.Neighbors(o.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *OrganizationClient) Hooks() []Hook {
 	return c.hooks.Organization
@@ -1020,6 +1043,129 @@ func (c *SlotClient) Hooks() []Hook {
 	return append(hooks[:len(hooks):len(hooks)], slot.Hooks[:]...)
 }
 
+// TokenClient is a client for the Token schema.
+type TokenClient struct {
+	config
+}
+
+// NewTokenClient returns a client for the Token from the given config.
+func NewTokenClient(c config) *TokenClient {
+	return &TokenClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `token.Hooks(f(g(h())))`.
+func (c *TokenClient) Use(hooks ...Hook) {
+	c.hooks.Token = append(c.hooks.Token, hooks...)
+}
+
+// Create returns a create builder for Token.
+func (c *TokenClient) Create() *TokenCreate {
+	mutation := newTokenMutation(c.config, OpCreate)
+	return &TokenCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Token entities.
+func (c *TokenClient) CreateBulk(builders ...*TokenCreate) *TokenCreateBulk {
+	return &TokenCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Token.
+func (c *TokenClient) Update() *TokenUpdate {
+	mutation := newTokenMutation(c.config, OpUpdate)
+	return &TokenUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TokenClient) UpdateOne(t *Token) *TokenUpdateOne {
+	mutation := newTokenMutation(c.config, OpUpdateOne, withToken(t))
+	return &TokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TokenClient) UpdateOneID(id string) *TokenUpdateOne {
+	mutation := newTokenMutation(c.config, OpUpdateOne, withTokenID(id))
+	return &TokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Token.
+func (c *TokenClient) Delete() *TokenDelete {
+	mutation := newTokenMutation(c.config, OpDelete)
+	return &TokenDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *TokenClient) DeleteOne(t *Token) *TokenDeleteOne {
+	return c.DeleteOneID(t.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *TokenClient) DeleteOneID(id string) *TokenDeleteOne {
+	builder := c.Delete().Where(token.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TokenDeleteOne{builder}
+}
+
+// Query returns a query builder for Token.
+func (c *TokenClient) Query() *TokenQuery {
+	return &TokenQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a Token entity by its id.
+func (c *TokenClient) Get(ctx context.Context, id string) (*Token, error) {
+	return c.Query().Where(token.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TokenClient) GetX(ctx context.Context, id string) *Token {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a Token.
+func (c *TokenClient) QueryUser(t *Token) *UserQuery {
+	query := &UserQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(token.Table, token.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, token.UserTable, token.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryOrganization queries the organization edge of a Token.
+func (c *TokenClient) QueryOrganization(t *Token) *OrganizationQuery {
+	query := &OrganizationQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(token.Table, token.FieldID, id),
+			sqlgraph.To(organization.Table, organization.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, token.OrganizationTable, token.OrganizationColumn),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TokenClient) Hooks() []Hook {
+	hooks := c.hooks.Token
+	return append(hooks[:len(hooks):len(hooks)], token.Hooks[:]...)
+}
+
 // UnavailabilityClient is a client for the Unavailability schema.
 type UnavailabilityClient struct {
 	config
@@ -1221,6 +1367,22 @@ func (c *UserClient) QueryAuths(u *User) *AuthQuery {
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(auth.Table, auth.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.AuthsTable, user.AuthsColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTokens queries the tokens edge of a User.
+func (c *UserClient) QueryTokens(u *User) *TokenQuery {
+	query := &TokenQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(token.Table, token.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.TokensTable, user.TokensColumn),
 		)
 		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
 		return fromV, nil

@@ -11,6 +11,7 @@ import (
 	"github.com/openmesh/booking/ent/predicate"
 	"github.com/openmesh/booking/ent/resource"
 	"github.com/openmesh/booking/ent/slot"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/unavailability"
 	"github.com/openmesh/booking/ent/user"
 
@@ -22,7 +23,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 9)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 10)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   auth.Table,
@@ -155,6 +156,25 @@ var schemaGraph = func() *sqlgraph.Schema {
 	}
 	graph.Nodes[7] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
+			Table:   token.Table,
+			Columns: token.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeString,
+				Column: token.FieldID,
+			},
+		},
+		Type: "Token",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			token.FieldCreatedAt:      {Type: field.TypeTime, Column: token.FieldCreatedAt},
+			token.FieldUpdatedAt:      {Type: field.TypeTime, Column: token.FieldUpdatedAt},
+			token.FieldName:           {Type: field.TypeString, Column: token.FieldName},
+			token.FieldExpiry:         {Type: field.TypeTime, Column: token.FieldExpiry},
+			token.FieldUserId:         {Type: field.TypeInt, Column: token.FieldUserId},
+			token.FieldOrganizationId: {Type: field.TypeInt, Column: token.FieldOrganizationId},
+		},
+	}
+	graph.Nodes[8] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
 			Table:   unavailability.Table,
 			Columns: unavailability.Columns,
 			ID: &sqlgraph.FieldSpec{
@@ -171,7 +191,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			unavailability.FieldResourceId: {Type: field.TypeInt, Column: unavailability.FieldResourceId},
 		},
 	}
-	graph.Nodes[8] = &sqlgraph.Node{
+	graph.Nodes[9] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   user.Table,
 			Columns: user.Columns,
@@ -262,6 +282,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Resource",
 	)
 	graph.MustAddE(
+		"tokens",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   organization.TokensTable,
+			Columns: []string{organization.TokensColumn},
+			Bidi:    false,
+		},
+		"Organization",
+		"Token",
+	)
+	graph.MustAddE(
 		"user",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -346,6 +378,30 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Resource",
 	)
 	graph.MustAddE(
+		"user",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   token.UserTable,
+			Columns: []string{token.UserColumn},
+			Bidi:    false,
+		},
+		"Token",
+		"User",
+	)
+	graph.MustAddE(
+		"organization",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   token.OrganizationTable,
+			Columns: []string{token.OrganizationColumn},
+			Bidi:    false,
+		},
+		"Token",
+		"Organization",
+	)
+	graph.MustAddE(
 		"resource",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -368,6 +424,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"User",
 		"Auth",
+	)
+	graph.MustAddE(
+		"tokens",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TokensTable,
+			Columns: []string{user.TokensColumn},
+			Bidi:    false,
+		},
+		"User",
+		"Token",
 	)
 	graph.MustAddE(
 		"organization",
@@ -740,6 +808,20 @@ func (f *OrganizationFilter) WhereHasResourcesWith(preds ...predicate.Resource) 
 	})))
 }
 
+// WhereHasTokens applies a predicate to check if query has an edge tokens.
+func (f *OrganizationFilter) WhereHasTokens() {
+	f.Where(entql.HasEdge("tokens"))
+}
+
+// WhereHasTokensWith applies a predicate to check if query has an edge tokens with a given conditions (other predicates).
+func (f *OrganizationFilter) WhereHasTokensWith(preds ...predicate.Token) {
+	f.Where(entql.HasEdgeWith("tokens", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
 // addPredicate implements the predicateAdder interface.
 func (ooq *OrganizationOwnershipQuery) addPredicate(pred func(s *sql.Selector)) {
 	ooq.predicates = append(ooq.predicates, pred)
@@ -1041,6 +1123,103 @@ func (f *SlotFilter) WhereHasResourceWith(preds ...predicate.Resource) {
 }
 
 // addPredicate implements the predicateAdder interface.
+func (tq *TokenQuery) addPredicate(pred func(s *sql.Selector)) {
+	tq.predicates = append(tq.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the TokenQuery builder.
+func (tq *TokenQuery) Filter() *TokenFilter {
+	return &TokenFilter{tq}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *TokenMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the TokenMutation builder.
+func (m *TokenMutation) Filter() *TokenFilter {
+	return &TokenFilter{m}
+}
+
+// TokenFilter provides a generic filtering capability at runtime for TokenQuery.
+type TokenFilter struct {
+	predicateAdder
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *TokenFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql string predicate on the id field.
+func (f *TokenFilter) WhereID(p entql.StringP) {
+	f.Where(p.Field(token.FieldID))
+}
+
+// WhereCreatedAt applies the entql time.Time predicate on the createdAt field.
+func (f *TokenFilter) WhereCreatedAt(p entql.TimeP) {
+	f.Where(p.Field(token.FieldCreatedAt))
+}
+
+// WhereUpdatedAt applies the entql time.Time predicate on the updatedAt field.
+func (f *TokenFilter) WhereUpdatedAt(p entql.TimeP) {
+	f.Where(p.Field(token.FieldUpdatedAt))
+}
+
+// WhereName applies the entql string predicate on the name field.
+func (f *TokenFilter) WhereName(p entql.StringP) {
+	f.Where(p.Field(token.FieldName))
+}
+
+// WhereExpiry applies the entql time.Time predicate on the expiry field.
+func (f *TokenFilter) WhereExpiry(p entql.TimeP) {
+	f.Where(p.Field(token.FieldExpiry))
+}
+
+// WhereUserId applies the entql int predicate on the userId field.
+func (f *TokenFilter) WhereUserId(p entql.IntP) {
+	f.Where(p.Field(token.FieldUserId))
+}
+
+// WhereOrganizationId applies the entql int predicate on the organizationId field.
+func (f *TokenFilter) WhereOrganizationId(p entql.IntP) {
+	f.Where(p.Field(token.FieldOrganizationId))
+}
+
+// WhereHasUser applies a predicate to check if query has an edge user.
+func (f *TokenFilter) WhereHasUser() {
+	f.Where(entql.HasEdge("user"))
+}
+
+// WhereHasUserWith applies a predicate to check if query has an edge user with a given conditions (other predicates).
+func (f *TokenFilter) WhereHasUserWith(preds ...predicate.User) {
+	f.Where(entql.HasEdgeWith("user", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasOrganization applies a predicate to check if query has an edge organization.
+func (f *TokenFilter) WhereHasOrganization() {
+	f.Where(entql.HasEdge("organization"))
+}
+
+// WhereHasOrganizationWith applies a predicate to check if query has an edge organization with a given conditions (other predicates).
+func (f *TokenFilter) WhereHasOrganizationWith(preds ...predicate.Organization) {
+	f.Where(entql.HasEdgeWith("organization", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// addPredicate implements the predicateAdder interface.
 func (uq *UnavailabilityQuery) addPredicate(pred func(s *sql.Selector)) {
 	uq.predicates = append(uq.predicates, pred)
 }
@@ -1068,7 +1247,7 @@ type UnavailabilityFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UnavailabilityFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -1146,7 +1325,7 @@ type UserFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[9].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -1190,6 +1369,20 @@ func (f *UserFilter) WhereHasAuths() {
 // WhereHasAuthsWith applies a predicate to check if query has an edge auths with a given conditions (other predicates).
 func (f *UserFilter) WhereHasAuthsWith(preds ...predicate.Auth) {
 	f.Where(entql.HasEdgeWith("auths", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasTokens applies a predicate to check if query has an edge tokens.
+func (f *UserFilter) WhereHasTokens() {
+	f.Where(entql.HasEdge("tokens"))
+}
+
+// WhereHasTokensWith applies a predicate to check if query has an edge tokens with a given conditions (other predicates).
+func (f *UserFilter) WhereHasTokensWith(preds ...predicate.Token) {
+	f.Where(entql.HasEdgeWith("tokens", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

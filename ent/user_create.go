@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/openmesh/booking/ent/auth"
 	"github.com/openmesh/booking/ent/organization"
+	"github.com/openmesh/booking/ent/token"
 	"github.com/openmesh/booking/ent/user"
 )
 
@@ -89,6 +90,21 @@ func (uc *UserCreate) AddAuths(a ...*Auth) *UserCreate {
 		ids[i] = a[i].ID
 	}
 	return uc.AddAuthIDs(ids...)
+}
+
+// AddTokenIDs adds the "tokens" edge to the Token entity by IDs.
+func (uc *UserCreate) AddTokenIDs(ids ...string) *UserCreate {
+	uc.mutation.AddTokenIDs(ids...)
+	return uc
+}
+
+// AddTokens adds the "tokens" edges to the Token entity.
+func (uc *UserCreate) AddTokens(t ...*Token) *UserCreate {
+	ids := make([]string, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return uc.AddTokenIDs(ids...)
 }
 
 // SetOrganizationID sets the "organization" edge to the Organization entity by ID.
@@ -275,6 +291,25 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: auth.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.TokensIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TokensTable,
+			Columns: []string{user.TokensColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeString,
+					Column: token.FieldID,
 				},
 			},
 		}
